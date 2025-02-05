@@ -25,4 +25,5 @@ Our program automates the entire conversion process, converting tables from a PD
 
 ### Example
 
-<iframe src="https://github.com/BisyB/pdf_converter/blob/main/file_example/pdf%20mockup.pdf" width="100%" height="600px"></iframe>
+[📄 Visualizza il PDF](https://github.com/BisyB/pdf_converter/blob/main/file_example/pdf%20mockup.pdf)
+[📊 Apri l'Excel](https://github.com/BisyB/pdf_converter/blob/main/file_example/excel%20mockup.xlsx)
