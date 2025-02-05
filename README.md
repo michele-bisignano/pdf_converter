@@ -22,3 +22,7 @@ Our program automates the entire conversion process, converting tables from a PD
 - **Automatic Extraction:** Detects and extracts tables from your PDF files.
 - **Accurate Conversion:** Preserves the table structure and data integrity during the transfer.
 - **Time-Saving:** Eliminates the tedious manual process, freeing up your valuable time.
+
+### Example
+
+<iframe src="https://github.com/BisyB/pdf_converter/blob/main/file_example/pdf%20mockup.pdf" width="100%" height="600px"></iframe>
