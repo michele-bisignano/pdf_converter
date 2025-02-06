@@ -1,5 +1,6 @@
 #This file contains functions that can be useful anywhere.
 
+# Returns the index of the first occurrence found
 def find_substring_in_array(array, search_string):
     search_string = search_string.lower()  # To make the search case-insensitive
     for index, element in enumerate(array):

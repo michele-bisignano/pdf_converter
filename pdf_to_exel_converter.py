@@ -40,6 +40,7 @@ def pdf_to_exel_converter_main(input_path, output_path):
         data = headers_delete(data, header)        
         data = filter_table_by_header_length(data, header)
         data = filter_table_by_descrizione(data, header)
+        data = fix_line_breaks(data, header)
         
         df = pd.DataFrame(data, columns=header)
     
@@ -119,5 +120,26 @@ def filter_table_by_header_length(table, header):
     return filtered_table
 
 # Merge the rows
-#def fix_line_breaks(table, header):
+def fix_line_breaks(table, header):
+    # Find indexes for 'data' and 'descrizione' columns
+    data_index = find_substring_in_array(header, "data")
+    descrizione_index = find_substring_in_array(header, "descrizione")
+    
+    new_table = []
+    
+    for row in table:
+        # Get the value of the 'data' column
+        data_value = row[data_index]
+        
+        # If 'data' is empty or None, treat as line break
+        if data_value is None or not str(data_value).strip():
+            # Merge description with previous row if it exists
+            if new_table:
+                new_table[-1][descrizione_index] += " " + row[descrizione_index]
+            else:
+                new_table.append(row)  # Add row as is if no previous row
+        else:
+            new_table.append(row)  # Add row normally if 'data' is valid
+    
+    return new_table
 
