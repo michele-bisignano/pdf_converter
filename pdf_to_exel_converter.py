@@ -4,7 +4,7 @@ import pdfplumber
 import pandas as pd
 from generalFunctions import find_substring_in_array, max_row_length
 
-def pdf_to_exel_converter_commercialisti_function(input_path, output_path):
+def pdf_to_exel_converter_main(input_path, output_path):
     
     # Set the path for the PDF and output Excel file
     pdf_path = input_path
@@ -67,7 +67,8 @@ def find_row_with_data_and_descrizione(table):
             return row  # Return the first row that satisfies both conditions
     
     print("\n\tATTENTIONE: intestazione non trovata\n")
-    return []#["data", "valuta", "dare", "avere", "descrizione"]# No matching row found
+    #["data", "valuta", "dare", "avere", "descrizione"]# No matching row found
+    return []
 
 # It returns the part of the table starting from the row after the header
 def copy_table_from_saldo_iniziale(table):
@@ -77,6 +78,7 @@ def copy_table_from_saldo_iniziale(table):
 
      # Return the full table if "saldo finale" is not found
      return table 
+
 # Delete the headers
 def headers_delete(table, header):
 
@@ -115,4 +117,7 @@ def filter_table_by_header_length(table, header):
     header_length = len(header)
     filtered_table = [row for row in table if len(row) == header_length]
     return filtered_table
+
+# Merge the rows
+#def fix_line_breaks(table, header):
 
