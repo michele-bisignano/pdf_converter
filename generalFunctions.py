@@ -15,3 +15,8 @@ def find_substring_in_array(array, search_string):
 def max_row_length(table):    
     max_length = max(len(row) for row in table)
     return max_length
+
+# Returns the number of word in the array
+def words_counter(testo):
+    parole = testo.split()
+    return len(parole)
