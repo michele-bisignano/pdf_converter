@@ -77,7 +77,7 @@ def copy_table_from_saldo_iniziale(table):
         if find_substring_in_array(row, "saldo iniziale")!=-1 or        find_substring_in_array(row, "saldo precedente")!=-1:
             return table[i:]
 
-     # Return the full table if "saldo finale" is not found
+     # Return the full table if nothing is found
      return table 
 
 # Delete the headers
@@ -97,11 +97,9 @@ def headers_delete(table, header):
 
 #It returns the table up to the final balance.
 def get_table_until_saldo_finale(table):
-    for i, row in enumerate(table):
-        index_saldo_fin=find_substring_in_array(row, "saldo fin")
-        if index_saldo_fin!=-1:
-            if words_counter(table[i][index_saldo_fin]) == 2:
-                return table[:i+1]
+    for i in range(len(table) - 1, -1, -1):
+        if find_substring_in_array(table[i], "saldo fin")!=-1:
+            return table[:i+1]
     # Return the full table if "saldo finale" is not found
     return table 
 
