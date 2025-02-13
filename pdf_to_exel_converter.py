@@ -1,8 +1,10 @@
 # Export the PDF file to an XLSX to be arranged
+from asyncio.windows_events import NULL
 import sys
 import pdfplumber
 import pandas as pd
 from generalFunctions import find_substring_in_array, max_row_length, words_counter
+from pdf_modifier import handle_exceptional_layouts
 
 def pdf_to_exel_converter_main(input_path, output_path):
     
@@ -30,6 +32,11 @@ def pdf_to_exel_converter_main(input_path, output_path):
         sys.exit()
 
     header= find_row_with_data_and_descrizione(data)
+
+    exceptional_table=handle_exceptional_layouts(header, input_path)
+
+    if(exceptional_table != None):
+        data=exceptional_table
     
     data = copy_table_from_saldo_iniziale(data)
     data = get_table_until_saldo_finale(data)
@@ -68,7 +75,7 @@ def find_row_with_data_and_descrizione(table):
             return row  # Return the first row that satisfies both conditions
     
     print("\n\tATTENTIONE: intestazione non trovata\n")
-    #["data", "valuta", "dare", "avere", "descrizione"]# No matching row found
+    # No matching row found
     return []
 
 # It returns the part of the table starting from the row after the header
