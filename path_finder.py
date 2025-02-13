@@ -24,7 +24,7 @@ def input_file_path_finder():
 
         sys.exit()
 
-    return file_pdf
+    return file_pdf[0]
 
 def temp_support_file_path_finder():
 
@@ -32,10 +32,10 @@ def temp_support_file_path_finder():
     current_directory = os.path.dirname(os.path.abspath(__file__))
     
     # Combine the folder with the temporary file name
-    nome_file = "dati_temporanei.xlsx"
-    percorso_file = os.path.join(current_directory, nome_file)
+    file_name = "dati_temporanei.xlsx"
+    path = os.path.join(current_directory, file_name)
     
-    return percorso_file
+    return path
 
 def output_file_path_generator():
 
@@ -43,7 +43,15 @@ def output_file_path_generator():
     current_directory = os.path.dirname(os.path.abspath(__file__))
     
     # Combine the folder with the temporary file name
-    percorso_file = os.path.join(current_directory, "DA_IMPORTARE.xlsx")
+    path = os.path.join(current_directory, "DA_IMPORTARE.xlsx")
 
-    return percorso_file
+    return path
 
+# This function generates the file path of a document where columns are automatically created
+def generate_column_file_path():
+    # It gets the absolute path of the script's folder
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    
+    # Combine the folder with the temporary file name
+    path = os.path.join(current_directory, "columns_file.pdf")
+    return path
