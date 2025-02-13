@@ -1,5 +1,6 @@
 #This file contains functions that can be useful anywhere.
 
+import pdfplumber
 import os
 
 # Returns the index of the first occurrence found
@@ -32,3 +33,22 @@ def destroy_pdf(pdf_path):
             os.remove(pdf_path)
         except Exception as e:
             print(f"An error occurred while deleting the file: {e}")
+
+# Read the pdf
+def pdf_reader(pdf_path):
+     # Create a list to collect the data
+    data = []
+
+    # open PDF file
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num, page in enumerate(pdf.pages):
+            # Extract the tables
+            tables = page.extract_tables()
+        
+            # Check if there are tables on the page.
+            if tables:
+                for table in tables:
+                    for row in table:
+                        data.append(row)
+
+    return data
