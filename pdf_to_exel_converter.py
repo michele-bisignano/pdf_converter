@@ -1,9 +1,8 @@
 # Export the PDF file to an XLSX to be arranged
 from asyncio.windows_events import NULL
 import sys
-import pdfplumber
 import pandas as pd
-from generalFunctions import find_substring_in_array, max_row_length, words_counter
+from generalFunctions import find_substring_in_array, max_row_length, words_counter, pdf_reader
 from pdf_modifier import handle_exceptional_layouts
 
 def pdf_to_exel_converter_main(input_path, output_path):
@@ -12,20 +11,7 @@ def pdf_to_exel_converter_main(input_path, output_path):
     pdf_path = input_path
     output1_excel_path = output_path
 
-    # Create a list to collect the data
-    data = []
-
-    # open PDF file
-    with pdfplumber.open(pdf_path[0]) as pdf:
-        for page_num, page in enumerate(pdf.pages):
-            # Extract the tables
-            tables = page.extract_tables()
-        
-            # Check if there are tables on the page.
-            if tables:
-                for table in tables:
-                    for row in table:
-                        data.append(row)
+    data = pdf_reader(pdf_path)
 
     if(is_table_empty(data)):
         print("\n\tERRORE: file illeggibile\n")
@@ -52,13 +38,13 @@ def pdf_to_exel_converter_main(input_path, output_path):
         df = pd.DataFrame(data, columns=header)
     
     else:
-        df=pd.DataFrame(data, columns=max_row_length(table))
+        df=pd.DataFrame(data, columns=max_row_length(data))
 
     # Save the DataFrame to an Excel file
     df.to_excel(output1_excel_path, index=False)
     print(f"File Excel salvato in: {output1_excel_path}")
 
-
+# Check if the table is empty
 def is_table_empty(table):
     if not table:  # check if the table is empty
         return True
