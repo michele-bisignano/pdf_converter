@@ -2,5 +2,6 @@
 .vs/
 dekstop.ini
 __pycache__/
-dati_temporanei.xlsx
+*.pdf
+*.xlsx
 note.txt
