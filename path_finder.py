@@ -26,6 +26,7 @@ def input_file_path_finder():
 
     return file_pdf[0]
 
+# TOGLIERE SE NON USATO
 def temp_support_file_path_finder():
 
 	# It gets the absolute path of the script's directory

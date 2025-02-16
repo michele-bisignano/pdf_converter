@@ -22,7 +22,7 @@ def pdf_to_exel_converter_main(input_path, output_path):
     exceptional_table=handle_exceptional_layouts(header, input_path)
 
     if(exceptional_table != None):
-        data=exceptional_table
+         data=exceptional_table
     
     data = copy_table_from_saldo_iniziale(data)
     data = get_table_until_saldo_finale(data)
