@@ -24,16 +24,6 @@ def words_counter(testo):
     parole = testo.split()
     return len(parole)
 
-
-#  Deletes the PDF file located at pdf_path if it exists
-def destroy_pdf(pdf_path):
-
-    if os.path.exists(pdf_path) and pdf_path.lower().endswith('.pdf'):
-        try:
-            os.remove(pdf_path)
-        except Exception as e:
-            print(f"An error occurred while deleting the file: {e}")
-
 # Read the pdf
 def pdf_reader(pdf_path):
      # Create a list to collect the data
@@ -52,3 +42,68 @@ def pdf_reader(pdf_path):
                         data.append(row)
 
     return data
+
+
+# FUNCTIONS FOR SWITCH THE COLUMNS:
+
+# Switch the contents of two columns in a 2D array.
+def switch_columns(table, index_col1, index_col2):
+
+    # Ensure the table has enough columns
+    max_col = max(index_col1, index_col2)
+    for row in table:
+        while len(row) <= max_col:
+            row.append('')
+    
+    # Read the columns
+    col1_data = column_reader(table, index_col1)
+    col2_data = column_reader(table, index_col2)
+    
+    # Write the columns back in switched positions
+    table = column_writer(table, index_col1, col2_data)
+    table = column_writer(table, index_col2, col1_data)
+    
+    return table
+
+# Read the col_index column from the table (2D array).
+def column_reader(table, col_index):
+
+    column_data = []
+    for row in table:
+        if col_index< len(row):
+            column_data.append(row[col_index])
+        else:
+            column_data.append('')
+    return column_data
+
+def column_writer(table, col_index, data_column):
+    # Find the index of the row containing "saldo precedente"
+    start_row = find_substring_in_array([" ".join(filter(None, row)) for row in table], "saldo precedente")
+    if start_row == -1:
+        start_row = 0  # If "saldo precedente" is not found, start from the first row
+    else:
+        start_row += 1  # Start from the row after "saldo precedente"
+    
+    max_rows = min(len(table), len(data_column) + start_row)
+    
+    # Ensure the table has enough rows
+    while len(table) < max_rows:
+        table.append([''] * (col_index + 1))
+    
+    # Write the data to the specified column starting from start_row
+    data_index = 0
+    for row_index in range(start_row, len(table)):
+        if data_index >= len(data_column):
+            break
+        row = table[row_index]
+        
+        # Skip rows that contain the word "data"
+        if any("data" in cell.lower() for cell in row if cell):
+            continue
+        
+        while len(row) <= col_index:
+            row.append('')
+        row[col_index] = data_column[data_index]
+        data_index += 1
+    
+    return table
