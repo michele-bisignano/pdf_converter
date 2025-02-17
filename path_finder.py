@@ -4,6 +4,9 @@ import sys
 
 # It returns the paths of the PDF files present in the same directory as the script.
 def input_file_path_finder():
+    
+    # Deletes the pdf with column file if exists
+    delete_pdf(generate_column_file_path())
 
     # It gets the absolute path of the script's folder
     current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -56,3 +59,8 @@ def generate_column_file_path():
     # Combine the folder with the temporary file name
     path = os.path.join(current_directory, "columns_file.pdf")
     return path
+
+# Deletes the file
+def delete_pdf(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
