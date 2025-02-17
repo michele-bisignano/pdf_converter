@@ -1,5 +1,5 @@
 # Export the PDF file to an XLSX to be arranged
-from asyncio.windows_events import NULL
+#from asyncio.windows_events import NULL
 import sys
 import pandas as pd
 from generalFunctions import find_substring_in_array, max_row_length, words_counter, pdf_reader
@@ -19,7 +19,7 @@ def pdf_to_exel_converter_main(input_path, output_path):
 
     header= find_row_with_data_and_descrizione(data)
 
-    exceptional_table=handle_exceptional_layouts(header, input_path)
+    exceptional_table, header=handle_exceptional_layouts(header, input_path)
 
     if(exceptional_table != None):
          data=exceptional_table
@@ -120,12 +120,12 @@ def fix_line_breaks(table, header):
     
     new_table = []
     
-    for row in table:
+    for i, row in enumerate(table):
         # Get the value of the 'data' column
         data_value = row[data_index]
         
         # If 'data' is empty or None, treat as line break
-        if data_value is None or not str(data_value).strip():
+        if (data_value is None or not str(data_value).strip()) and i < len(table) - 1:
             # Merge description with previous row if it exists
             if new_table:
                 new_table[-1][descrizione_index] += " " + row[descrizione_index]
