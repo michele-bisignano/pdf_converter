@@ -1,10 +1,11 @@
 # This file contains functions to handle Credem and Credit_Agricole pdf
 import io
 import fitz  # PyMuPDF
+import re
 from reportlab.pdfgen import canvas
 from PyPDF2 import PdfReader, PdfWriter
-from generalFunctions import destroy_pdf, pdf_reader
-from path_finder import generate_column_file_path
+from generalFunctions import pdf_reader, column_writer
+from path_finder import generate_column_file_path, delete_pdf
 
 # Check if the table belongs to Credem or Crédit Agricole bank.
 def handle_exceptional_layouts(header, input_path):
@@ -39,20 +40,29 @@ def handle_exceptional_layouts(header, input_path):
         ]
         # Handle the Credem file using the adjusted header
         handle_credem_file(header, input_path)
+        
+        # Read the processed PDF file with columns into a table
+        table = pdf_reader(pdf_path_with_columns)
+
+        all_table = extract_left_column_data(pdf_path_with_columns) # Extract the data from the document
+        left_column_data= extract_dates_from_left_column(all_table) # Extract the dates from the left column
+        table= column_writer(table, 0, left_column_data) # Write the dates back to the table
 
     # Check if the header matches the Crédit Agricole header
     elif header == credit_agricole_header:
+
         # Handle the Crédit Agricole file
         handle_credit_agricole(header, input_path)
 
-    # Read the processed PDF file with columns into a table
-    table = pdf_reader(pdf_path_with_columns)
+        # Read the processed PDF file with columns into a table
+        table = pdf_reader(pdf_path_with_columns)
 
     # Delete the temporary PDF file generated earlier
-    destroy_pdf(pdf_path_with_columns)
+    delete_pdf(pdf_path_with_columns)
 
-    # Return the final table data
-    return table
+     # Return the final table data and the modified header
+    return table, header
+
 
 
 # Draws a vertical line on the canvas for each x in x_coords, the lines extend from y_top to y_bottom.
@@ -153,33 +163,6 @@ def draw_column_lines_on_pdf(headers, x_coords, table_bottom_y, input_pdf, line_
     with open(output_pdf, "wb") as f:
         writer.write(f)
 
-
-# CREDEM function
-
-def handle_credem_file(header, input_path):
-
-    y_bottom = 800  # How far the columns should extend
-    x_coords = [35, 560]  #  X-coordinates of the columns 
-    line_widths= [5,5]
-
-    draw_column_lines_on_pdf(header, x_coords, y_bottom, input_path, line_widths)
-
-    pdf_path_with_columns = generate_column_file_path()
-
-
-
-# CREDIT AGRICOLE functions:
-
-def handle_credit_agricole(header, input_path):    
-    y_bottom = 750  # How far the columns should extend
-    x_coords = [21, 64, 115, 176, 239, 526, 578]  #  X-coordinates of the columns 
-    line_widths= [3]
-
-    draw_column_lines_on_pdf(header, x_coords, y_bottom, input_path, line_widths)
-
-    pdf_path_with_columns = generate_column_file_path()
-
-
 # Finds "saldo finale"
 def find_saldo_finale(doc):
     # Iterate over the pages in reverse order
@@ -199,5 +182,67 @@ def find_saldo_finale(doc):
     # Return None if neither "saldo finale" nor "saldo fine" is found in the document
     return None
 
+
+# CREDEM functions:
+
+def handle_credem_file(header, input_path):
+
+    y_bottom = 800  # How far the columns should extend
+    x_coords = [35, 560]  #  X-coordinates of the columns 
+    line_widths= [5,5]
+
+    draw_column_lines_on_pdf(header, x_coords, y_bottom, input_path, line_widths)
+
+    pdf_path_with_columns = generate_column_file_path()
+
+ # Extract text from the table
+def extract_left_column_data(pdf_path_with_columns):
+    # Open the PDF file
+    doc = fitz.open(pdf_path_with_columns)
+    left_column_data = []
+
+    for page in doc:
+        # Extract all the text blocks from the page
+        blocks = page.get_text("blocks")
+        
+        # Identify the left column blocks based on their x-coordinates
+        for block in blocks:
+            x0, y0, x1, y1, text, block_no, block_type = block
+            # Assuming the left column has x-coordinates less than a certain threshold (e.g., 100)
+            if x0 < 100:
+                left_column_data.append(text.strip())
+
+    return left_column_data
+
+# Extract data from the left column
+def extract_dates_from_left_column(data):
+    # Initialize an empty list to store the dates
+    dates = []
+    
+    # Regular expression to find dates in the format DD/MM/YYYY
+    date_pattern = re.compile(r'\d{2}/\d{2}/\d{4}')
+    
+    # Iterate over each item in the data list
+    for item in data:
+        # Split the item by spaces to separate potential columns
+        columns = item.split()
+        
+        # Check if the first column contains a date
+        if columns and date_pattern.match(columns[0]):
+            # Add the date from the first column to the dates list
+            dates.append(columns[0])
+    
+    return dates
+
+# CREDIT AGRICOLE functions:
+
+def handle_credit_agricole(header, input_path):    
+    y_bottom = 750  # How far the columns should extend
+    x_coords = [21, 64, 115, 176, 239, 526, 578]  #  X-coordinates of the columns 
+    line_widths= [3]
+
+    draw_column_lines_on_pdf(header, x_coords, y_bottom, input_path, line_widths)
+
+    pdf_path_with_columns = generate_column_file_path()
 
 
