@@ -23,7 +23,7 @@ def input_file_path_finder():
             print(f"\n\tERRORE: sono presenti {len(file_pdf)} file pdf nella cartella")
             print("\trimuovere i file PDF in eccesso e riprovare.\n")
         else:
-            print("\n\ERRORE: Nessun file PDF trovato.\n")
+            print("\n\tERRORE: Nessun file PDF trovato.\n")
 
         sys.exit()
 
