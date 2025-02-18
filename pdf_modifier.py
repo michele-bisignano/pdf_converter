@@ -151,7 +151,7 @@ def draw_column_lines_on_pdf(headers, x_coords, table_bottom_y, input_pdf, line_
         # If we are on the page where "final balance" was found, overwrite table_bottom_y
         if saldo_finale_info is not None and i == saldo_finale_info[0]:
             # Set the bottom of the table to the bottom edge of the word "final balance"
-            table_bottom_y = saldo_finale_info[1].y1
+            table_bottom_y = saldo_finale_info[1].y1+5
 
         y_top_rl, y_bottom_rl = convert_to_reportlab_coords(header_top_y, table_bottom_y, page_height)
         
@@ -187,13 +187,11 @@ def find_saldo_finale(doc):
 
 def handle_credem_file(header, input_path):
 
-    y_bottom = 800  # How far the columns should extend
+    y_bottom = 813  # How far the columns should extend
     x_coords = [35, 560]  #  X-coordinates of the columns 
     line_widths= [5,5]
 
     draw_column_lines_on_pdf(header, x_coords, y_bottom, input_path, line_widths)
-
-    pdf_path_with_columns = generate_column_file_path()
 
  # Extract text from the table
 def extract_left_column_data(pdf_path_with_columns):

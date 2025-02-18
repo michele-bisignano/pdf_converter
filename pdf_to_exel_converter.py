@@ -1,8 +1,9 @@
 # Export the PDF file to an XLSX to be arranged
 #from asyncio.windows_events import NULL
 import sys
+from tabnanny import check
 import pandas as pd
-from generalFunctions import find_substring_in_array, max_row_length, words_counter, pdf_reader
+from generalFunctions import find_substring_in_array, max_row_length, pdf_reader, find_any_word_in_array, switch_columns, switch_cell, transform_column_to_numbers
 from pdf_modifier import handle_exceptional_layouts
 
 def pdf_to_exel_converter_main(input_path, output_path):
@@ -34,15 +35,21 @@ def pdf_to_exel_converter_main(input_path, output_path):
         data = filter_table_by_header_length(data, header)
         data = filter_table_by_descrizione(data, header)
         data = fix_line_breaks(data, header)
-        
+        data, header = columns_switcher(data, header)
+
         df = pd.DataFrame(data, columns=header)
     
     else:
         df=pd.DataFrame(data, columns=max_row_length(data))
 
-    # Save the DataFrame to an Excel file
-    df.to_excel(output1_excel_path, index=False)
-    print(f"File Excel salvato in: {output1_excel_path}")
+    try:
+        # Save the DataFrame to an Excel file
+        df.to_excel(output1_excel_path, index=False)
+        print(f"File Excel salvato in: {output1_excel_path}")        
+        check_table(data)
+    except PermissionError:
+        print("\n\tERRORE: chiudere la tabella Excel prima di eseguire l'algoritmo")
+
 
 # Check if the table is empty
 def is_table_empty(table):
@@ -67,7 +74,7 @@ def find_row_with_data_and_descrizione(table):
 # It returns the part of the table starting from the row after the header
 def copy_table_from_saldo_iniziale(table):
      for i, row in enumerate(table):
-        if find_substring_in_array(row, "saldo iniziale")!=-1 or        find_substring_in_array(row, "saldo precedente")!=-1:
+        if find_substring_in_array(row, "saldo iniziale")!=-1 or find_substring_in_array(row, "saldo precedente")!=-1:
             return table[i:]
 
      # Return the full table if nothing is found
@@ -135,4 +142,95 @@ def fix_line_breaks(table, header):
             new_table.append(row)  # Add row normally if 'data' is valid
     
     return new_table
+
+# Switch the columns
+def columns_switcher(table, header):
+    
+    # Rearranges the dataset columns so that:
+    # Column A: 'data'
+    # Column C: 'descrizione'
+    # Column F: 'dare/entrate/credito'
+    # Column G: 'avere/uscite/debito'
+   
+    final_header_indexes=[0,2,5,6] # Indexes of the final header
+    initial_header_indexes= [] # Indexes of the initial header  
+
+    credit_aliases = ["dare", "entrate", "credito"] # Aliases for the debit column
+    debit_aliases = ["avere", "uscite", "debito"] # Aliases for the credit column
+    
+    # Find the indexes of the columns in the initial header
+    initial_header_indexes.append(find_substring_in_array(header, "data"))
+    initial_header_indexes.append(find_substring_in_array(header, "descrizione"))
+    initial_header_indexes.append(find_any_word_in_array(header, credit_aliases))
+    initial_header_indexes.append(find_any_word_in_array(header, debit_aliases))
+
+    # Switch the columns according to the final header
+    for i in range(len(initial_header_indexes)):
+        if initial_header_indexes[i] != -1:
+            table = switch_columns(table, initial_header_indexes[i], final_header_indexes[i]) # Switch the columns
+            header = switch_cell(header, initial_header_indexes[i], final_header_indexes[i]) # Switch the header cells
+
+    # Transform the credit column to numbers
+    if(initial_header_indexes[2]!=-1):
+        table=transform_column_to_numbers(table, final_header_indexes[2])
+
+    # Transform the debit column to numbers
+    if(initial_header_indexes[3]!=-1):
+        table=transform_column_to_numbers(table, final_header_indexes[3])
+
+    return table, header
+
+# Check if the sum of incomes and expenses is equal to the final balance
+def check_table(table):
+
+    credit_column_number = 5
+    debit_column_number = 6
+
+    credit_sum = 0
+    debit_sum = 0
+
+    try:
+        # Iterate up to the second-to-last row
+        for row in table[:-1]:
+            credit_value = row[credit_column_number]
+            debit_value = row[debit_column_number]
+
+            if credit_value is not None:
+                if isinstance(credit_value, (int, float)):
+                    credit_sum += credit_value
+                else:
+                    raise ValueError(f"Invalid value in credit column: {credit_value}")
+            else:
+                if debit_value is not None:
+                    if isinstance(debit_value, (int, float)):
+                        debit_sum += debit_value
+                    else:
+                        raise ValueError(f"Invalid value in debit column: {debit_value}")
+                else:
+                    raise ValueError("Both credit and debit values are None")
+
+
+    except ValueError as e:
+        print("\n\tERRORE: La tabella non e' stata esportata correttamente")
+        return
+    
+    debit_sum = abs(debit_sum)
+    saldo_finale_calculated = credit_sum - debit_sum
+    
+    # Round the sums to 2 decimal places
+    saldo_finale_calculated = round(saldo_finale_calculated, 2)
+    saldo_finale_exported_table = table[-1][credit_column_number]
+    
+    if(saldo_finale_calculated == saldo_finale_exported_table):
+        print("La tabella e' stata esportata correttamente")
+    else:
+        print("\n\tERRORE: la tabella NON e' stata esportata correttamente")
+
+
+
+
+
+
+    
+
 
