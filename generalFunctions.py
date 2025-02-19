@@ -54,7 +54,7 @@ def pdf_reader(pdf_path):
 
     return data
 
-# Switch the contents of two cells in an array
+# Switch the contents of two cells in an array, cell1 and cell2 are the indexes of the cells to switch
 def switch_cell(array, cell1, cell2):
 
     if (cell1 == cell2):
@@ -71,36 +71,56 @@ def switch_cell(array, cell1, cell2):
     
     return array
 
+# Switch the contents of two cells in an array if element2 is after than element1
+# element1 and element2 are the elements to switch (not their indexes)
+def swap_elements(array, element1, element2):
+    if element1 in array and element2 in array:
+        index1 = array.index(element1)
+        index2 = array.index(element2)
+        if index2 > index1:
+            array = switch_cell(array, index1, index2)
+            return array
+    return array
+
 #  Transforms all numbers in a specific column (column_number) of the table (2D array) from strings with commas to numeric types
 def transform_column_to_numbers(table, column_number):
-
     new_table = []
 
     for row in table:
         new_row = row[:]
         try:
             if isinstance(new_row[column_number], str):
-                # Check for negative sign
-                is_negative = new_row[column_number].startswith('-')
-                if is_negative:
-                    new_row[column_number] = new_row[column_number][1:]  # Remove the negative sign
-                # Remove periods used as thousand separators
-                new_row[column_number] = new_row[column_number].replace('.', '')
-                # Replace comma with a period for conversion
-                new_row[column_number] = new_row[column_number].replace(',', '.')
-                # Check if the string is a number
-                if new_row[column_number].replace('.', '', 1).isdigit():
-                    new_row[column_number] = float(new_row[column_number]) if '.' in new_row[column_number] else int(new_row[column_number])
-                    if is_negative:
-                        new_row[column_number] *= -1
-                else:
-                    # Restore the comma and periods in the original string if it's not a number
-                    new_row[column_number] = row[column_number]
-        except (IndexError, ValueError):
-            # Ignore index or conversion errors
-            pass
-        new_table.append(new_row)
+                value = new_row[column_number]
 
+                # Remove spaces within the number
+                value = value.replace(' ', '')
+
+                # Check for negative sign
+                is_negative = value.startswith('-')
+                if is_negative:
+                    value = value[1:]  # Temporarily remove the negative sign
+
+                # Remove periods used as thousand separators
+                value = value.replace('.', '')
+
+                # Replace comma with a period for decimal conversion
+                value = value.replace(',', '.')
+
+                # Check if the string is a valid number
+                if value.replace('.', '', 1).isdigit():
+                    new_value = float(value) if '.' in value else int(value)
+
+                    # Reapply the negative sign if needed
+                    if is_negative:
+                        new_value *= -1
+
+                    new_row[column_number] = new_value  # Assign the converted value
+                else:
+                    raise ValueError  # Force an error if the value is not a valid number
+        except (IndexError, ValueError):
+            new_row = row  # Restore the original row in case of an error
+
+        new_table.append(new_row)  # Add the row to the table after processing
 
     return new_table
 

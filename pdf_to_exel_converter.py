@@ -3,7 +3,7 @@
 import sys
 from tabnanny import check
 import pandas as pd
-from generalFunctions import find_substring_in_array, max_row_length, pdf_reader, find_any_word_in_array, switch_columns, switch_cell, transform_column_to_numbers
+from generalFunctions import find_substring_in_array, max_row_length, pdf_reader, find_any_word_in_array, switch_columns, switch_cell, transform_column_to_numbers, swap_elements
 from pdf_modifier import handle_exceptional_layouts
 
 def pdf_to_exel_converter_main(input_path, output_path):
@@ -124,15 +124,21 @@ def fix_line_breaks(table, header):
     # Find indexes for 'data' and 'descrizione' columns
     data_index = find_substring_in_array(header, "data")
     descrizione_index = find_substring_in_array(header, "descrizione")
-    
+
     new_table = []
-    
-    for i, row in enumerate(table):
+
+     # Copy the first row (header)
+    if table:
+        new_table.append(table[0])
+
+    # Process rows starting from the second and ending at the penultimate
+    for i in range(1, len(table) - 1):
+        row = table[i]
         # Get the value of the 'data' column
         data_value = row[data_index]
         
         # If 'data' is empty or None, treat as line break
-        if (data_value is None or not str(data_value).strip()) and i < len(table) - 1:
+        if data_value is None or not str(data_value).strip():
             # Merge description with previous row if it exists
             if new_table:
                 new_table[-1][descrizione_index] += " " + row[descrizione_index]
@@ -141,9 +147,13 @@ def fix_line_breaks(table, header):
         else:
             new_table.append(row)  # Add row normally if 'data' is valid
     
+    # Copy the last row if the table has more than one row
+    if len(table) > 1:
+        new_table.append(table[-1])
+    
     return new_table
 
-# Switch the columns
+# Rearranges the dataset columns
 def columns_switcher(table, header):
     
     # Rearranges the dataset columns so that:
@@ -170,6 +180,10 @@ def columns_switcher(table, header):
             table = switch_columns(table, initial_header_indexes[i], final_header_indexes[i]) # Switch the columns
             header = switch_cell(header, initial_header_indexes[i], final_header_indexes[i]) # Switch the header cells
 
+            initial_header_indexes = swap_elements(initial_header_indexes, initial_header_indexes[i], final_header_indexes[i])
+
+
+
     # Transform the credit column to numbers
     if(initial_header_indexes[2]!=-1):
         table=transform_column_to_numbers(table, final_header_indexes[2])
@@ -192,8 +206,16 @@ def check_table(table):
     try:
         # Iterate up to the second-to-last row
         for row in table[:-1]:
+
+
             credit_value = row[credit_column_number]
             debit_value = row[debit_column_number]
+            
+             # Treat empty strings as None
+            if credit_value == '' or credit_value == "":
+                credit_value = None
+            if debit_value == '' or debit_value == "":
+                debit_value = None
 
             if credit_value is not None:
                 if isinstance(credit_value, (int, float)):
@@ -217,10 +239,17 @@ def check_table(table):
     debit_sum = abs(debit_sum)
     saldo_finale_calculated = credit_sum - debit_sum
     
-    # Round the sums to 2 decimal places
+    # Get the final balance from the last row of the table
+    if saldo_finale_calculated > 0:
+        saldo_finale_exported_table = table[-1][credit_column_number]
+    else:
+        saldo_finale_exported_table = table[-1][debit_column_number]
+
+    # Round the sums to 2 decimal places and convert to positive values
     saldo_finale_calculated = round(saldo_finale_calculated, 2)
-    saldo_finale_exported_table = table[-1][credit_column_number]
+    saldo_finale_calculated = abs(saldo_finale_calculated)    
     
+
     if(saldo_finale_calculated == saldo_finale_exported_table):
         print("La tabella e' stata esportata correttamente")
     else:
