@@ -160,13 +160,7 @@ def column_reader(table, col_index):
     return column_data
 
 # Write the data_column to the col_index column in the table (2D array).
-def column_writer(table, col_index, data_column):
-    # Find the index of the row containing "saldo precedente"
-    start_row = find_substring_in_array([" ".join(filter(None, row)) for row in table], "saldo precedente")
-    if start_row == -1:
-        start_row = 0  # If "saldo precedente" is not found, start from the first row
-    else:
-        start_row += 1  # Start from the row after "saldo precedente"
+def column_writer(table, col_index, data_column, start_row=0):
     
     max_rows = min(len(table), len(data_column) + start_row)
     

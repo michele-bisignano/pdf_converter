@@ -84,13 +84,9 @@ def copy_table_from_saldo_iniziale(table):
 def headers_delete(table, header):
 
     cleaned_table = []
-    found_header = False
     
     for row in table:
-        if row == header:
-            if not found_header:
-                found_header = True  # Mark the header as found, but don't add it to cleaned_table
-        else:
+        if not(find_substring_in_array(row, "descrizione") != -1 and find_substring_in_array(row, "data") != -1):
             cleaned_table.append(row)  # Add all rows, except the header
     
     return cleaned_table

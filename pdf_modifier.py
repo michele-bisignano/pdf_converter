@@ -46,7 +46,10 @@ def handle_exceptional_layouts(header, input_path):
 
         all_table = extract_left_column_data(pdf_path_with_columns) # Extract the data from the document
         left_column_data= extract_dates_from_left_column(all_table) # Extract the dates from the left column
-        table= column_writer(table, 0, left_column_data) # Write the dates back to the table
+        
+        # Write the dates back to the table
+        table = column_writer(table, 0, left_column_data, 2)  # The value 2 is due to the presence of the header and the initial balance
+       
 
     # Check if the header matches the Crédit Agricole header
     elif header == credit_agricole_header:
@@ -240,7 +243,5 @@ def handle_credit_agricole(header, input_path):
     line_widths= [3]
 
     draw_column_lines_on_pdf(header, x_coords, y_bottom, input_path, line_widths)
-
-    pdf_path_with_columns = generate_column_file_path()
 
 
