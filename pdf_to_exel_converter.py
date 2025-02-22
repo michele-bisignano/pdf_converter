@@ -250,6 +250,7 @@ def check_table(table):
         print("La tabella e' stata esportata correttamente")
     else:
         print("\n\tERRORE: la tabella NON e' stata esportata correttamente")
+        print(f"Saldo mancante: {saldo_finale_exported_table- saldo_finale_calculated}")
 
 
 
