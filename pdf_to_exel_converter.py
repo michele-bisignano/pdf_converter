@@ -271,12 +271,14 @@ def check_table(table):
     saldo_finale_calculated = round(saldo_finale_calculated, 2)
     saldo_finale_calculated = abs(saldo_finale_calculated)
 
-    if saldo_finale_calculated == saldo_finale_exported_table:
-        print("La tabella e' stata esportata correttamente")
+    if saldo_finale_exported_table is not None and isinstance(saldo_finale_exported_table, (int, float)):
+        if saldo_finale_calculated == saldo_finale_exported_table:
+            print("La tabella e' stata esportata correttamente")
+        else:
+            print("\n\tERRORE: la tabella NON e' stata esportata correttamente")
+            print(f"Saldo mancante: {saldo_finale_exported_table - saldo_finale_calculated}")
     else:
-        print("\n\tERRORE: la tabella NON e' stata esportata correttamente")
-        print(f"Saldo mancante: {saldo_finale_exported_table - saldo_finale_calculated}")
-
+        print("\n\tERRORE: Non e' stato trovato il saldo finale")
 
     
 
