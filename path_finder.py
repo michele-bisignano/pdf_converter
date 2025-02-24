@@ -15,8 +15,13 @@ def input_file_path_finder():
     # Delete the column file PDF if it exists
     delete_pdf(generate_column_file_path())
 
-    # Get the absolute path of the script's directory
-    current_directory = os.path.dirname(os.path.abspath(__file__))
+   # Get the absolute path of the script's directory
+    if getattr(sys, 'frozen', False):
+        # For PyInstaller
+        current_directory = sys._MEIPASS
+    else:
+        # For normal script
+        current_directory = os.path.dirname(os.path.abspath(__file__))
 
     # Find all PDF files in the directory
     pdf_files = [
