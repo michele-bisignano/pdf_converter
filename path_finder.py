@@ -31,7 +31,8 @@ def input_file_path_finder():
             print(f"\n\tERROR: There are {len(pdf_files)} PDF files in the folder.")
             print("\tRemove the excess PDF files and try again.\n")
         else:
-            print("\n\tERROR: No PDF files found.\n")
+            print(f"\n\tERROR: No PDF files found in the directory '{current_directory}'.\n")
+        input("Press Enter to exit...")
         sys.exit()
 
     return pdf_files[0]

@@ -16,6 +16,7 @@ def pdf_to_excel_converter_main(input_path, output_path):
 
     if is_table_empty(data):
         print("\n\tERRORE: file illeggibile\n")
+        input("Press Enter to exit...")
         sys.exit()
 
     header = find_row_with_data_and_descrizione(data)
