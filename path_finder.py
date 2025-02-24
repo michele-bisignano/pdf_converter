@@ -15,10 +15,10 @@ def input_file_path_finder():
     # Delete the column file PDF if it exists
     delete_pdf(generate_column_file_path())
 
-   # Get the absolute path of the script's directory
+    # Get the absolute path of the script's directory
     if getattr(sys, 'frozen', False):
         # For PyInstaller
-        current_directory = sys._MEIPASS
+        current_directory = os.path.dirname(sys.executable)
     else:
         # For normal script
         current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -47,7 +47,12 @@ def output_file_path_generator():
     Generates the output file path for the Excel file to be created.
     """
     # Get the absolute path of the script's directory
-    current_directory = os.path.dirname(os.path.abspath(__file__))
+    if getattr(sys, 'frozen', False):
+        # For PyInstaller
+        current_directory = os.path.dirname(sys.executable)
+    else:
+        # For normal script
+        current_directory = os.path.dirname(os.path.abspath(__file__))
 
     # Combine the directory path with the output file name
     output_path = os.path.join(current_directory, "DA_IMPORTARE.xlsx")
@@ -58,8 +63,12 @@ def generate_column_file_path():
     """
     Generates the file path for the temporary PDF file used to create columns.
     """
-    # Get the absolute path of the script's directory
-    current_directory = os.path.dirname(os.path.abspath(__file__))
+    if getattr(sys, 'frozen', False):
+        # For PyInstaller
+        current_directory = os.path.dirname(sys.executable)
+    else:
+        # For normal script
+        current_directory = os.path.dirname(os.path.abspath(__file__))
 
     # Combine the directory path with the column file name
     column_file_path = os.path.join(current_directory, "columns_file.pdf")
