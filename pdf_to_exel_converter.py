@@ -25,6 +25,7 @@ def pdf_to_excel_converter_main(input_path, output_path):
     if exceptional_table is not None:
         data = exceptional_table
 
+
     data = copy_table_from_saldo_iniziale(data)
     data = get_table_until_saldo_finale(data)
 
