@@ -1,6 +1,6 @@
 # main file
-from pdf_to_exel_converter import pdf_to_excel_converter_main
-from path_finder import input_file_path_finder, output_file_path_generator
+from src.backend.pdf_to_exel_converter import pdf_to_excel_converter_main
+from src.backend.path_finder import input_file_path_finder, output_file_path_generator
 
 def main():
     """

@@ -4,8 +4,8 @@ import fitz  # PyMuPDF
 import re
 from reportlab.pdfgen import canvas
 from PyPDF2 import PdfReader, PdfWriter
-from generalFunctions import pdf_reader, column_writer
-from path_finder import generate_column_file_path, delete_pdf
+from src.backend.generalFunctions import pdf_reader, column_writer
+from src.backend.path_finder import generate_column_file_path, delete_pdf
 
 def handle_exceptional_layouts(header, input_path):
     """

@@ -1,8 +1,8 @@
 # The code in this file is responsible for reading the PDF file and generating the XLXS file.
 import sys
 import pandas as pd
-from generalFunctions import find_substring_in_array, max_row_length, pdf_reader, find_any_word_in_array, switch_columns, switch_cell, transform_column_to_numbers, swap_elements
-from pdf_modifier import handle_exceptional_layouts
+from src.backend.generalFunctions import find_substring_in_array, max_row_length, pdf_reader, find_any_word_in_array, switch_columns, switch_cell, transform_column_to_numbers, swap_elements
+from src.backend.pdf_modifier import handle_exceptional_layouts
 
 def pdf_to_excel_converter_main(input_path, output_path):
     """

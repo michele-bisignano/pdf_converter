@@ -1,36 +1,36 @@
 """
-This file contains all the necessary functions for file management, 
-including finding the paths for input and output files, generating paths 
+This file contains all the necessary functions for file management,
+including finding the paths for input and output files, generating paths
 for temporary files, and handling the deletion of existing files.
 """
 
 import os
 import sys
 
+
+def _get_project_root():
+    """Returns the project root directory (parent of src/)."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # src/backend/
+    return os.path.dirname(os.path.dirname(script_dir))  # root
+
+
 def input_file_path_finder():
     """
-    Returns the path of the single PDF file in the script's directory.
+    Returns the path of the single PDF file in the project root.
     If there are no PDF files or more than one, it prints an error and exits.
     """
-    # Delete the column file PDF if it exists
     delete_pdf(generate_column_file_path())
 
-    # Get the absolute path of the script's directory
-    if getattr(sys, 'frozen', False):
-        # For PyInstaller
-        current_directory = os.path.dirname(sys.executable)
-    else:
-        # For normal script
-        current_directory = os.path.dirname(os.path.abspath(__file__))
+    current_directory = _get_project_root()
 
-    # Find all PDF files in the directory
     pdf_files = [
         os.path.join(current_directory, file)
         for file in os.listdir(current_directory)
         if file.lower().endswith('.pdf')
     ]
 
-    # Check if there is exactly one PDF file
     if len(pdf_files) != 1:
         if len(pdf_files) > 1:
             print(f"\n\tERRORE: Sono presenti {len(pdf_files)} file PDF nella cartella.")
@@ -42,42 +42,18 @@ def input_file_path_finder():
 
     return pdf_files[0]
 
+
 def output_file_path_generator():
-    """
-    Generates the output file path for the Excel file to be created.
-    """
-    # Get the absolute path of the script's directory
-    if getattr(sys, 'frozen', False):
-        # For PyInstaller
-        current_directory = os.path.dirname(sys.executable)
-    else:
-        # For normal script
-        current_directory = os.path.dirname(os.path.abspath(__file__))
+    """Generates the output Excel file path in the project root."""
+    return os.path.join(_get_project_root(), "DA_IMPORTARE.xlsx")
 
-    # Combine the directory path with the output file name
-    output_path = os.path.join(current_directory, "DA_IMPORTARE.xlsx")
-
-    return output_path
 
 def generate_column_file_path():
-    """
-    Generates the file path for the temporary PDF file used to create columns.
-    """
-    if getattr(sys, 'frozen', False):
-        # For PyInstaller
-        current_directory = os.path.dirname(sys.executable)
-    else:
-        # For normal script
-        current_directory = os.path.dirname(os.path.abspath(__file__))
+    """Generates the path for the temporary PDF column file in the project root."""
+    return os.path.join(_get_project_root(), "columns_file.pdf")
 
-    # Combine the directory path with the column file name
-    column_file_path = os.path.join(current_directory, "columns_file.pdf")
-
-    return column_file_path
 
 def delete_pdf(file_path):
-    """
-    Deletes the specified file if it exists.
-    """
+    """Deletes the specified file if it exists."""
     if os.path.exists(file_path):
         os.remove(file_path)
