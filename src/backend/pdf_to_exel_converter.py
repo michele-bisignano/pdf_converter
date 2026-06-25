@@ -1,50 +1,45 @@
 # The code in this file is responsible for reading the PDF file and generating the XLXS file.
-import sys
 import pandas as pd
 from src.backend.generalFunctions import find_substring_in_array, max_row_length, pdf_reader, find_any_word_in_array, switch_columns, switch_cell, transform_column_to_numbers, swap_elements
 from src.backend.pdf_modifier import handle_exceptional_layouts
+from src.backend.pdf_fallback import pdf_fallback
+
 
 def pdf_to_excel_converter_main(input_path, output_path):
     """
     Main function to convert PDF data to an Excel file.
-    
-    Parameters:
-    input_path (str): Path to the input PDF file.
-    output_path (str): Path to the output Excel file.
+    Falls back to pdf_fallback on any error.
     """
-    data = pdf_reader(input_path)
-
-    if is_table_empty(data):
-        print("\n\tERRORE: file illeggibile\n")
-        input("Press Enter to exit...")
-        sys.exit()
-
-    header = find_row_with_data_and_descrizione(data)
-    exceptional_table, header = handle_exceptional_layouts(header, input_path)
-
-    if exceptional_table is not None:
-        data = exceptional_table
-
-
-    data = copy_table_from_saldo_iniziale(data)
-    data = get_table_until_saldo_finale(data)
-
-    if header:
-        data = headers_delete(data, header)
-        data = filter_table_by_header_length(data, header)
-        data = filter_table_by_descrizione(data, header)
-        data = fix_line_breaks(data, header)
-        data, header = columns_switcher(data, header)
-        df = pd.DataFrame(data, columns=header)
-    else:
-        df = pd.DataFrame(data, columns=max_row_length(data))
-
     try:
+        data = pdf_reader(input_path)
+
+        if is_table_empty(data):
+            raise ValueError("Tabella vuota")
+
+        header = find_row_with_data_and_descrizione(data)
+        exceptional_table, header = handle_exceptional_layouts(header, input_path)
+
+        if exceptional_table is not None:
+            data = exceptional_table
+
+        data = copy_table_from_saldo_iniziale(data)
+        data = get_table_until_saldo_finale(data)
+
+        if header:
+            data = headers_delete(data, header)
+            data = filter_table_by_header_length(data, header)
+            data = filter_table_by_descrizione(data, header)
+            data = fix_line_breaks(data, header)
+            data, header = columns_switcher(data, header)
+            df = pd.DataFrame(data, columns=header)
+        else:
+            df = pd.DataFrame(data, columns=max_row_length(data))
+
         df.to_excel(output_path, index=False)
         print(f"File Excel salvato in: {output_path}")
         check_table(data)
-    except PermissionError:
-        print("\n\tERRORE: chiudere la tabella Excel prima di eseguire l'algoritmo")
+    except Exception:
+        pdf_fallback(input_path, output_path)
 
 def is_table_empty(table):
     """
