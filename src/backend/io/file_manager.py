@@ -12,31 +12,39 @@ def _get_project_root():
     """Returns the project root directory (parent of src/)."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
-    script_dir = os.path.dirname(os.path.abspath(__file__))  # src/backend/
-    return os.path.dirname(os.path.dirname(script_dir))  # root
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # src/backend/io/
+    return os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))  # root
+
+
+def _find_pdfs(directory):
+    """Returns list of PDF file paths in the given directory."""
+    return [
+        os.path.join(directory, file)
+        for file in os.listdir(directory)
+        if file.lower().endswith('.pdf')
+    ]
 
 
 def input_file_path_finder():
     """
-    Returns the path of the single PDF file in the project root.
-    If there are no PDF files or more than one, it prints an error and exits.
+    Returns the path of the single PDF file found in the project root
+    or src/ directory. If not exactly one exists across both, errors.
     """
     delete_pdf(generate_column_file_path())
 
-    current_directory = _get_project_root()
+    root = _get_project_root()
+    src_dir = os.path.join(root, "src")
 
-    pdf_files = [
-        os.path.join(current_directory, file)
-        for file in os.listdir(current_directory)
-        if file.lower().endswith('.pdf')
-    ]
+    pdf_files = _find_pdfs(root)
+    if os.path.isdir(src_dir):
+        pdf_files += _find_pdfs(src_dir)
 
     if len(pdf_files) != 1:
         if len(pdf_files) > 1:
-            print(f"\n\tERRORE: Sono presenti {len(pdf_files)} file PDF nella cartella.")
+            print("\n\tERRORE: Sono presenti {} file PDF tra root e src/.".format(len(pdf_files)))
             print("\tRimuovi i file PDF in eccesso e riprova.\n")
         else:
-            print(f"\n\tERRORE: Nessun file PDF trovato nella directory '{current_directory}'.\n")
+            print("\n\tERRORE: Nessun file PDF trovato in root o in src/.\n")
         input("Press Enter to exit...")
         sys.exit()
 
