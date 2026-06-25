@@ -18,7 +18,10 @@ def main():
     # Convert the PDF to Excel
     pdf_to_excel_converter_main(input_path, output_path)
 
-    input("Press Enter to exit...")
+    try:
+        input("Press Enter to exit...")
+    except EOFError:
+        pass
 
 if __name__ == "__main__":
     main()
