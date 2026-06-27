@@ -218,22 +218,97 @@ def normalize_amounts_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def extract_riepilogo_rows(df: pd.DataFrame) -> tuple:
+def normalize_saldo_rows(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Split a DataFrame into (riepilogo_df, movements_df).
+    Normalize saldo rows so they have the same structure as transaction rows.
 
-    Riepilogo rows are those whose Descrizione contains a summary keyword.
+    For 'SALDO INIZIALE' / 'SALDO PRECEDENTE' and 'SALDO FINALE' / 'SALDO DEL PERIODO'
+    rows: moves the amount to the appropriate column (Accrediti if positive,
+    Addebiti if negative) and fills missing date columns with the first
+    available date from the DataFrame.
+    Returns the full DataFrame with saldo rows still in it.
     """
     if 'Descrizione' not in df.columns:
-        return pd.DataFrame(), df
+        return df
 
+    # Find the first non-empty date to use as default for saldo rows
+    first_date = ''
+    for col in ['Data Operazione', 'Data Valuta']:
+        if col in df.columns:
+            for val in df[col]:
+                if pd.notna(val) and str(val).strip() != '':
+                    first_date = str(val).strip()
+                    break
+        if first_date:
+            break
+
+    # Identify riepilogo/summary rows
     mask = pd.Series(False, index=df.index)
     for kw in RIEPILOGO_KEYWORDS:
         mask |= df['Descrizione'].astype(str).str.lower().str.contains(kw, na=False)
 
-    riepilogo = df[mask].copy()
-    movements = df[~mask].copy()
-    return riepilogo, movements
+    if not mask.any():
+        return df
+
+    result = df.copy()
+
+    for idx in result[mask].index:
+        desc_lower = str(result.at[idx, 'Descrizione']).lower().strip()
+
+        # Only normalize saldo rows (initial/final), skip totals etc.
+        is_saldo = ('saldo iniziale' in desc_lower or 'saldo precedente' in desc_lower or
+                     'saldo finale' in desc_lower or 'saldo del periodo' in desc_lower)
+
+        if not is_saldo:
+            continue
+
+        # Find the raw amount in either column
+        raw_amount = None
+        for col in ['Accrediti', 'Addebiti']:
+            if col in result.columns:
+                val = result.at[idx, col]
+                if pd.notna(val) and str(val).strip() != '':
+                    raw_amount = val
+                    break
+
+        if raw_amount is None:
+            continue
+
+        # Determine sign from the raw value without full normalization
+        # (normalize_amounts_df will handle normalization later)
+        str_val = str(raw_amount).strip()
+        is_negative = str_val.startswith('-')
+        if not is_negative and isinstance(raw_amount, (int, float)):
+            is_negative = raw_amount < 0
+
+        # Clear both amount columns
+        if 'Accrediti' in result.columns:
+            result.at[idx, 'Accrediti'] = None
+        if 'Addebiti' in result.columns:
+            result.at[idx, 'Addebiti'] = None
+
+        # Put the raw amount in the correct column based on sign
+        if is_negative:
+            if isinstance(raw_amount, str):
+                clean_val = str_val.lstrip('-').lstrip('+')
+            else:
+                clean_val = abs(raw_amount)
+            result.at[idx, 'Addebiti'] = clean_val
+        else:
+            result.at[idx, 'Accrediti'] = raw_amount
+
+        # Fill missing dates
+        if 'Data Operazione' in result.columns:
+            curr = result.at[idx, 'Data Operazione']
+            if pd.isna(curr) or str(curr).strip() == '':
+                result.at[idx, 'Data Operazione'] = first_date
+
+        if 'Data Valuta' in result.columns:
+            curr = result.at[idx, 'Data Valuta']
+            if pd.isna(curr) or str(curr).strip() == '':
+                result.at[idx, 'Data Valuta'] = first_date
+
+    return result
 
 
 def extract_riepilogo_simple(html: str) -> dict:
@@ -258,6 +333,84 @@ def extract_riepilogo_simple(html: str) -> dict:
             result['totale_accrediti'] = normalize_amount(raw)
         elif 'totale addebiti' in label:
             result['totale_addebiti'] = normalize_amount(raw)
+    return result
+
+
+def validate_saldo(export_df: pd.DataFrame, riepilogo_vals: dict | None = None) -> dict:
+    """
+    Validate balance using the full export DataFrame.
+
+    Extracts saldo iniziale and saldo finale from the DataFrame's Descrizione
+    column (falling back to riepilogo_vals if not found), then checks that
+    saldo_iniziale + sum(credits) - sum(debits) ≈ saldo_finale.
+    Returns a dict with result and details.
+    """
+    # Extract saldo values from the DataFrame
+    saldo_iniziale = None
+    saldo_finale = None
+
+    if 'Descrizione' in export_df.columns:
+        for _, row in export_df.iterrows():
+            desc = str(row.get('Descrizione', '')).lower() if pd.notna(row.get('Descrizione')) else ''
+            val = None
+            if pd.notna(row.get('Accrediti')):
+                val = row['Accrediti']
+            elif pd.notna(row.get('Addebiti')):
+                val = -row['Addebiti']
+
+            if val is not None:
+                if 'saldo iniziale' in desc or 'saldo precedente' in desc:
+                    saldo_iniziale = val
+                elif 'saldo finale' in desc or 'saldo del periodo' in desc:
+                    saldo_finale = val
+
+    # Fallback to passed riepilogo_vals if not found in DataFrame
+    if saldo_iniziale is None and riepilogo_vals:
+        saldo_iniziale = riepilogo_vals.get('saldo_iniziale')
+    if saldo_finale is None and riepilogo_vals:
+        saldo_finale = riepilogo_vals.get('saldo_finale')
+
+    # Identify transaction rows (exclude riepilogo/summary rows)
+    mask = pd.Series(True, index=export_df.index)
+    if 'Descrizione' in export_df.columns:
+        for kw in RIEPILOGO_KEYWORDS:
+            mask &= ~export_df['Descrizione'].astype(str).str.lower().str.contains(kw, na=False)
+
+    movements = export_df[mask]
+
+    total_accrediti = movements['Accrediti'].sum() if 'Accrediti' in movements and not movements['Accrediti'].empty else 0
+    total_addebiti = movements['Addebiti'].sum() if 'Addebiti' in movements and not movements['Addebiti'].empty else 0
+
+    if pd.isna(total_accrediti):
+        total_accrediti = 0
+    if pd.isna(total_addebiti):
+        total_addebiti = 0
+
+    result = {
+        "saldo_iniziale": round(saldo_iniziale, 2) if saldo_iniziale is not None else None,
+        "totale_accrediti": round(total_accrediti, 2),
+        "totale_addebiti": round(total_addebiti, 2),
+        "saldo_finale_dichiarato": round(saldo_finale, 2) if saldo_finale is not None else None,
+        "saldo_calcolato": None,
+        "differenza": None,
+        "valid": True,
+        "messaggio": "",
+    }
+
+    if saldo_iniziale is not None and saldo_finale is not None:
+        saldo_calcolato = saldo_iniziale + total_accrediti - total_addebiti
+        result["saldo_calcolato"] = round(saldo_calcolato, 2)
+        diff = round(abs(saldo_calcolato - saldo_finale), 2)
+        result["differenza"] = diff
+
+        if diff > 0.01:
+            result["valid"] = False
+            result["messaggio"] = (
+                f"Warning: the calculated balance ({saldo_calcolato:,.2f}) "
+                f"does not match the declared final balance ({saldo_finale:,.2f}). "
+                f"Difference: {diff:,.2f}."
+            )
+
     return result
 
 

@@ -3,6 +3,12 @@ import { useState } from "react";
 import { Power } from "lucide-react";
 import PDFConverterBox from "./components/PDFConverterBox";
 
+/**
+ * Shutdown button that sends a POST request to the backend
+ * to gracefully stop the server.
+ *
+ * @returns {JSX.Element} A floating button in the top-right corner
+ */
 function ShutdownButton() {
   const [shutting, setShutting] = useState(false);
 
@@ -38,13 +44,21 @@ function ShutdownButton() {
 const FEATURES = [
   {
     id: "pdf-to-excel",
-    title: "PDF → Excel",
+    title: "PDF to Excel",
     description: "",
-    icon: "📄",
+    icon: "page_facing_up",
     component: PDFConverterBox,
   },
 ];
 
+/**
+ * Root application component.
+ *
+ * Renders the page header, the feature card containing the
+ * PDF converter, a shutdown button, and a footer.
+ *
+ * @returns {JSX.Element} The full application layout
+ */
 export default function App() {
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">

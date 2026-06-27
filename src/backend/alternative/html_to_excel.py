@@ -9,50 +9,11 @@ from .processing import (
     fix_line_breaks,
     normalize_amount,
     normalize_amounts_df,
-    extract_riepilogo_rows,
+    normalize_saldo_rows,
+    validate_saldo,
     df_to_export_format,
+    RIEPILOGO_KEYWORDS,
 )
-
-
-def validate_saldo(saldo_iniziale: float | None, movements: pd.DataFrame, saldo_finale: float | None) -> dict:
-    """
-    Validate: saldo_iniziale + total_credits - total_debits ≈ saldo_finale.
-    Returns a dict with result and details.
-    """
-    total_accrediti = movements['Accrediti'].sum() if 'Accrediti' in movements and not movements['Accrediti'].empty else 0
-    total_addebiti = movements['Addebiti'].sum() if 'Addebiti' in movements and not movements['Addebiti'].empty else 0
-
-    if pd.isna(total_accrediti):
-        total_accrediti = 0
-    if pd.isna(total_addebiti):
-        total_addebiti = 0
-
-    result = {
-        "saldo_iniziale": round(saldo_iniziale, 2) if saldo_iniziale is not None else None,
-        "totale_accrediti": round(total_accrediti, 2),
-        "totale_addebiti": round(total_addebiti, 2),
-        "saldo_finale_dichiarato": round(saldo_finale, 2) if saldo_finale is not None else None,
-        "saldo_calcolato": None,
-        "differenza": None,
-        "valid": True,
-        "messaggio": "",
-    }
-
-    if saldo_iniziale is not None and saldo_finale is not None:
-        saldo_calcolato = saldo_iniziale + total_accrediti - total_addebiti
-        result["saldo_calcolato"] = round(saldo_calcolato, 2)
-        diff = round(abs(saldo_calcolato - saldo_finale), 2)
-        result["differenza"] = diff
-
-        if diff > 0.01:
-            result["valid"] = False
-            result["messaggio"] = (
-                f"Warning: the calculated balance ({saldo_calcolato:,.2f}) "
-                f"does not match the declared final balance ({saldo_finale:,.2f}). "
-                f"Difference: {diff:,.2f}."
-            )
-
-    return result
 
 
 def _safe_output_path(original_path: str) -> str:
@@ -138,38 +99,22 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
     # ---- Phase 2: fix line breaks ----
     combined = fix_line_breaks(combined)
 
-    # ---- Phase 3: split riepilogo data rows ----
-    riepilogo, movements = extract_riepilogo_rows(combined)
+    # ---- Phase 3: normalize saldo rows (keep them in the DataFrame) ----
+    combined = normalize_saldo_rows(combined)
 
     # ---- Phase 4: normalize amounts ----
-    movements = normalize_amounts_df(movements)
+    combined = normalize_amounts_df(combined)
 
     # ---- Phase 5: final clean-up ----
-    movements = movements.dropna(subset=['Data Operazione'], how='any').reset_index(drop=True)
-    movements = df_to_export_format(movements)
+    combined = combined.dropna(subset=['Data Operazione'], how='any').reset_index(drop=True)
+    export_df = df_to_export_format(combined)
 
-    if movements.empty:
+    if export_df.empty:
         print("	No valid transactions after cleaning.")
         return result
 
-    # ---- Phase 6: validation (BEFORE adding riepilogo rows) ----
-    saldo_iniziale_val = riepilogo_vals.get('saldo_iniziale')
-    saldo_finale_val = riepilogo_vals.get('saldo_finale')
-
-    # Also look for initial/final balance in transaction summary rows
-    if saldo_iniziale_val is None and not riepilogo.empty:
-        for _, r in riepilogo.iterrows():
-            desc = str(r.get('Descrizione', '')).lower() if pd.notna(r.get('Descrizione')) else ''
-            if 'saldo iniziale' in desc or 'saldo precedente' in desc:
-                amount_a = r.get('Accrediti') if 'Accrediti' in r else None
-                amount_d = r.get('Addebiti') if 'Addebiti' in r else None
-                saldo_iniziale_val = normalize_amount(amount_a) if pd.notna(amount_a) else normalize_amount(amount_d)
-            if 'saldo finale' in desc or 'saldo del periodo' in desc:
-                amount_a = r.get('Accrediti') if 'Accrediti' in r else None
-                amount_d = r.get('Addebiti') if 'Addebiti' in r else None
-                saldo_finale_val = normalize_amount(amount_a) if pd.notna(amount_a) else normalize_amount(amount_d)
-
-    validation = validate_saldo(saldo_iniziale_val, movements, saldo_finale_val)
+    # ---- Phase 6: validation ----
+    validation = validate_saldo(export_df, riepilogo_vals)
     result["validation"] = validation
 
     if not validation["valid"]:
@@ -177,29 +122,7 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
         result["warning_message"] = validation["messaggio"]
         print("\n\t" + validation["messaggio"])
 
-    # ---- Phase 7: add riepilogo rows (saldo iniziale / saldo finale) to export ----
-    export_df = movements.copy()
-    if saldo_iniziale_val is not None:
-        saldo_row = {col: None for col in export_df.columns}
-        saldo_row['Descrizione'] = 'SALDO INIZIALE'
-        if saldo_iniziale_val >= 0:
-            saldo_row['Accrediti'] = round(saldo_iniziale_val, 2)
-        else:
-            saldo_row['Addebiti'] = round(abs(saldo_iniziale_val), 2)
-        saldo_row_df = pd.DataFrame([saldo_row]).astype(export_df.dtypes.to_dict())
-        export_df = pd.concat([saldo_row_df, export_df], ignore_index=True)
-
-    if saldo_finale_val is not None:
-        saldo_row = {col: None for col in export_df.columns}
-        saldo_row['Descrizione'] = 'SALDO FINALE'
-        if saldo_finale_val >= 0:
-            saldo_row['Accrediti'] = round(saldo_finale_val, 2)
-        else:
-            saldo_row['Addebiti'] = round(abs(saldo_finale_val), 2)
-        saldo_row_df = pd.DataFrame([saldo_row]).astype(export_df.dtypes.to_dict())
-        export_df = pd.concat([export_df, saldo_row_df], ignore_index=True)
-
-    # ---- Phase 8: write to Excel ----
+    # ---- Phase 7: write to Excel ----
     output_path = _safe_output_path(output_path)
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         export_df.to_excel(writer, index=False, sheet_name="Movimenti")
@@ -213,7 +136,14 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
                 if cell.value is not None and isinstance(cell.value, (int, float)):
                     cell.number_format = '#,##0.00'
 
-    row_count = len(movements)
+    # Count only transaction rows (exclude saldo/riepilogo rows)
+    if 'Descrizione' in export_df.columns:
+        riepilogo_mask = pd.Series(False, index=export_df.index)
+        for kw in RIEPILOGO_KEYWORDS:
+            riepilogo_mask |= export_df['Descrizione'].astype(str).str.lower().str.contains(kw, na=False)
+        row_count = len(export_df[~riepilogo_mask])
+    else:
+        row_count = len(export_df)
     print("	Saved {} transactions -> {}".format(row_count, output_path))
     result["success"] = True
     result["row_count"] = row_count

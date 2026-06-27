@@ -2,6 +2,15 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, FileText, Loader2, Download, AlertTriangle } from "lucide-react";
 import { convertPdf, downloadFile } from "../services/api";
 
+/**
+ * PDF-to-Excel converter component.
+ *
+ * Provides a drag-and-drop zone and a file picker for PDF upload,
+ * triggers conversion on the backend, and offers a download flow
+ * (native "Save As" dialog with fallback to a regular download).
+ *
+ * @returns {JSX.Element} The converter box UI
+ */
 export default function PDFConverterBox() {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -11,6 +20,12 @@ export default function PDFConverterBox() {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
 
+  /**
+   * Validates and stores the selected PDF file.
+   * Resets previous results on new file selection.
+   *
+   * @param {File} selectedFile - The file picked by the user
+   */
   const handleFile = useCallback((selectedFile) => {
     if (!selectedFile || !selectedFile.name.toLowerCase().endsWith(".pdf")) {
       setError("Please select a valid PDF file.");
@@ -23,6 +38,11 @@ export default function PDFConverterBox() {
     setResultWarning(null);
   }, []);
 
+  /**
+   * Handles the drop event from drag-and-drop.
+   *
+   * @param {React.DragEvent} e - The drag event
+   */
   const onDrop = useCallback((e) => {
     e.preventDefault();
     setDragging(false);
@@ -30,12 +50,24 @@ export default function PDFConverterBox() {
     if (f) handleFile(f);
   }, [handleFile]);
 
+  /**
+   * Highlights the drop zone while dragging over it.
+   *
+   * @param {React.DragEvent} e - The drag event
+   */
   const onDragOver = (e) => {
     e.preventDefault();
     setDragging(true);
   };
+  /**
+   * Removes the highlight when the drag leaves the drop zone.
+   */
   const onDragLeave = () => setDragging(false);
 
+  /**
+   * Uploads the selected PDF to the backend, receives the converted
+   * result, and triggers the download (native "Save As" or fallback).
+   */
   const onUpload = async () => {
     if (!file) return;
     setLoading(true);
@@ -53,7 +85,7 @@ export default function PDFConverterBox() {
 
       const blob = await downloadFile(data.file_name);
 
-      // Salva con nome — File System Access API (Chrome)
+      // "Save As" via the File System Access API (Chrome)
       let saved = false;
       if ("showSaveFilePicker" in window) {
         try {

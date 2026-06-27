@@ -1,4 +1,5 @@
 """Orchestrator: reads PDF, processes tables, exports to Excel."""
+import pandas as pd
 from src.backend.extraction.pdf_reader import pdf_reader
 from src.backend.extraction.layouts import handle_exceptional_layouts
 from src.backend.processing.table_processor import (
@@ -13,6 +14,7 @@ from src.backend.processing.table_processor import (
     columns_switcher,
 )
 from src.backend.export.excel_writer import export_to_excel
+from src.backend.alternative.processing import validate_saldo
 from src.backend.pdf_fallback import pdf_fallback
 
 
@@ -53,6 +55,31 @@ def pdf_to_excel_converter_main(input_path, output_path):
             data, header = columns_switcher(data, header)
 
         export_to_excel(data, header, output_path)
-        return {"success": True, "warning": False, "warning_message": "", "validation": None, "row_count": len(data) - 2}
+
+        # Build DataFrame for validation
+        df = pd.DataFrame(data, columns=header)
+        col_map = {}
+        for col in df.columns:
+            low = str(col).lower()
+            if 'descrizione' in low:
+                col_map[col] = 'Descrizione'
+            elif 'accredito' in low or 'credito' in low or 'entrate' in low or 'dare' in low:
+                col_map[col] = 'Accrediti'
+            elif 'addebito' in low or 'debito' in low or 'uscite' in low or 'avere' in low:
+                col_map[col] = 'Addebiti'
+        df_std = df.rename(columns=col_map)
+        for col_name in ['Accrediti', 'Addebiti']:
+            if col_name in df_std.columns:
+                df_std[col_name] = pd.to_numeric(df_std[col_name], errors='coerce')
+
+        validation = validate_saldo(df_std)
+
+        return {
+            "success": True,
+            "warning": not validation["valid"],
+            "warning_message": validation.get("messaggio", ""),
+            "validation": validation,
+            "row_count": len(data) - 2,
+        }
     except Exception:
         return pdf_fallback(input_path, output_path)
