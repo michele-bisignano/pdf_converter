@@ -6,3 +6,4 @@ __pycache__/
 *.xlsx
 note.txt
 .env
+node_modules/

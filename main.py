@@ -77,9 +77,10 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Esempi:
-  main.py              Avvia server web con interfaccia grafica
-  main.py --cli        Modalita solo backend (CLI)
-  main.py --port 9000  Server su porta 9000
+  main.py                        Avvia server web con interfaccia grafica
+  main.py --cli                  Modalita solo backend (CLI)
+  main.py --port 9000            Server su porta 9000
+  main.py --check-update         Verifica aggiornamenti all'avvio
         """,
     )
     parser.add_argument(
@@ -99,10 +100,30 @@ Esempi:
     parser.add_argument(
         "--version", action="version", version="pdf_converter 1.0.0"
     )
+    parser.add_argument(
+        "--check-update",
+        action="store_true",
+        help="Verifica presenza aggiornamenti all'avvio",
+    )
+    parser.add_argument(
+        "--update-manifest-url",
+        type=str,
+        default=None,
+        help=argparse.SUPPRESS,  # Opzione avanzata, nascosta da --help
+    )
 
     args = parser.parse_args()
     _setup_logging(args.verbose)
 
+    # ── Auto-update check ──────────────────────────────────────────────────
+    if args.check_update:
+        from src.backend.updater import check_and_apply
+
+        applied = check_and_apply(manifest_url=args.update_manifest_url)
+        if applied:
+            return  # Process will exit via sys.exit inside apply_update
+
+    # ── Normal startup ─────────────────────────────────────────────────────
     if args.cli:
         run_cli()
     else:

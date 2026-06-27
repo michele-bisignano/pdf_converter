@@ -1,0 +1,387 @@
+"""
+Auto-update module for pdf_converter (Windows PyInstaller).
+
+Architecture
+------------
+Versions are distributed via GitHub Releases. Each release contains:
+  - pdf_converter.exe  (the new binary)
+  - manifest.json      (version metadata + checksum)
+
+On startup (--check-update) the module:
+  1. Fetches manifest.json from the latest GitHub Release
+  2. Compares versions
+  3. If a newer version exists → downloads the .exe to %TEMP%
+  4. Launches update.bat that waits for this process to exit,
+     replaces the .exe, and restarts the app
+
+Manifest JSON schema
+--------------------
+{
+  "version": "1.1.0",
+  "release_date": "2026-06-27",
+  "url": "https://github.com/BisyB/pdf_converter/releases/download/v1.1.0/pdf_converter.exe",
+  "checksum": "sha256 hex string",
+  "checksum_type": "sha256",
+  "release_notes": "Bug fixes and improvements",
+  "mandatory": false
+}
+"""
+
+import hashlib
+import json
+import logging
+import os
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass, field
+from pathlib import Path
+from urllib.error import URLError
+from urllib.request import Request, urlopen
+
+logger = logging.getLogger("pdf_converter.updater")
+
+# ── Defaults ───────────────────────────────────────────────────────────────────
+
+DEFAULT_MANIFEST_URL = (
+    "https://github.com/BisyB/pdf_converter/releases/latest/download/manifest.json"
+)
+
+ENV_MANIFEST_URL = "PDF_CONVERTER_UPDATE_URL"
+
+UPDATE_DIR = Path(tempfile.gettempdir()) / "pdf_converter_update"
+
+CURRENT_VERSION = "1.0.0"
+
+
+# ── Data ───────────────────────────────────────────────────────────────────────
+
+@dataclass
+class UpdateInfo:
+    """Parsed information about an available update."""
+
+    version: str
+    url: str
+    checksum: str = ""
+    checksum_type: str = "sha256"
+    release_date: str = ""
+    release_notes: str = ""
+    mandatory: bool = False
+
+
+# ── Version helpers ────────────────────────────────────────────────────────────
+
+
+def _parse_version(ver: str) -> tuple[int, ...]:
+    """Parse '1.2.3' → (1, 2, 3) for comparison.
+
+    Falls back to (0,) on malformed input so we never crash.
+    """
+    try:
+        return tuple(int(x) for x in ver.strip().split("."))
+    except (ValueError, AttributeError):
+        return (0,)
+
+
+def _is_newer(remote: str, current: str) -> bool:
+    """True if *remote* is a strictly greater version than *current*."""
+    return _parse_version(remote) > _parse_version(current)
+
+
+# ── Manifest fetching ──────────────────────────────────────────────────────────
+
+
+def _resolve_manifest_url(cli_url: str | None = None) -> str:
+    """Resolve the manifest URL: CLI arg > env var > default."""
+    if cli_url:
+        return cli_url
+    env_url = os.environ.get(ENV_MANIFEST_URL)
+    if env_url:
+        return env_url
+    return DEFAULT_MANIFEST_URL
+
+
+def fetch_manifest(manifest_url: str) -> dict | None:
+    """Download and parse the remote manifest.json.
+
+    Returns None on any network / parse error.
+    """
+    logger.info("Fetching update manifest from %s", manifest_url)
+    try:
+        req = Request(manifest_url, headers={"User-Agent": "pdf_converter-updater/1.0"})
+        with urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        logger.debug("Manifest content: %s", data)
+        return data
+    except URLError as e:
+        logger.warning("Network error fetching manifest: %s", e)
+    except json.JSONDecodeError as e:
+        logger.warning("Invalid JSON in manifest: %s", e)
+    except OSError as e:
+        logger.warning("IO error fetching manifest: %s", e)
+    return None
+
+
+# ── Update check ───────────────────────────────────────────────────────────────
+
+
+def check_for_update(manifest_url: str | None = None) -> UpdateInfo | None:
+    """Check whether a newer version exists.
+
+    Returns an ``UpdateInfo`` if one is available, or ``None``.
+    """
+    url = _resolve_manifest_url(manifest_url)
+    manifest = fetch_manifest(url)
+    if manifest is None:
+        return None
+
+    remote_ver = manifest.get("version", "")
+    if not remote_ver:
+        logger.warning("Manifest missing 'version' field")
+        return None
+
+    if not _is_newer(remote_ver, CURRENT_VERSION):
+        logger.info("Already at latest version (%s)", CURRENT_VERSION)
+        return None
+
+    return UpdateInfo(
+        version=remote_ver,
+        url=manifest.get("url", ""),
+        checksum=manifest.get("checksum", ""),
+        checksum_type=manifest.get("checksum_type", "sha256"),
+        release_date=manifest.get("release_date", ""),
+        release_notes=manifest.get("release_notes", ""),
+        mandatory=manifest.get("mandatory", False),
+    )
+
+
+# ── Download ───────────────────────────────────────────────────────────────────
+
+
+def _verify_checksum(file_path: Path, expected: str, algo: str = "sha256") -> bool:
+    """Return True if the file matches the expected hex digest."""
+    try:
+        h = hashlib.new(algo)
+    except ValueError:
+        logger.error("Unsupported checksum algorithm: %s", algo)
+        return False
+
+    with open(file_path, "rb") as f:
+        while chunk := f.read(8192):
+            h.update(chunk)
+
+    actual = h.hexdigest()
+    ok = actual == expected.lower()
+    if not ok:
+        logger.error(
+            "Checksum mismatch: expected %s, got %s", expected[:16], actual[:16]
+        )
+    return ok
+
+
+def download_update(update: UpdateInfo) -> Path | None:
+    """Download the new .exe to a temp directory.
+
+    Returns the path to the downloaded file, or None on failure.
+    """
+    if not update.url:
+        logger.error("Update URL is empty")
+        return None
+
+    UPDATE_DIR.mkdir(parents=True, exist_ok=True)
+    exe_path = UPDATE_DIR / "pdf_converter.exe"
+
+    # Clean up any partial download from a previous attempt
+    if exe_path.exists():
+        exe_path.unlink()
+
+    logger.info("Downloading update v%s da %s ...", update.version, update.url)
+
+    try:
+        req = Request(update.url, headers={"User-Agent": "pdf_converter-updater/1.0"})
+        with urlopen(req, timeout=300) as resp:
+            with open(exe_path, "wb") as f:
+                # Copy in chunks so we can handle large files
+                while chunk := resp.read(65536):
+                    f.write(chunk)
+    except URLError as e:
+        logger.error("Download failed: %s", e)
+        return None
+    except OSError as e:
+        logger.error("IO error during download: %s", e)
+        return None
+
+    # Verify checksum if the manifest provided one
+    if update.checksum:
+        print(f"  Verifica checksum... ", end="", flush=True)
+        if not _verify_checksum(exe_path, update.checksum, update.checksum_type):
+            print("FALLITA")
+            exe_path.unlink(missing_ok=True)
+            return None
+        print("OK")
+
+    logger.info("Update downloaded to %s (%d bytes)", exe_path, exe_path.stat().st_size)
+    return exe_path
+
+
+# ── Apply update ───────────────────────────────────────────────────────────────
+
+
+def _build_update_bat(
+    current_exe: str, new_exe: str, parent_pid: int, restart: bool = True
+) -> str:
+    """Generate the batch script that replaces the running .exe.
+
+    The script:
+      1. Waits for the parent process (``parent_pid``) to exit
+      2. Retries ``copy`` until it succeeds (file lock released)
+      3. Deletes the downloaded copy
+      4. Restarts the updated .exe (optional)
+    """
+    lines = [
+        '@echo off',
+        'title pdf_converter - Aggiornamento in corso...',
+        'echo.',
+        'echo ============================================',
+        'echo  Aggiornamento pdf_converter in corso...',
+        'echo ============================================',
+        'echo.',
+        '',
+        ':wait_parent',
+        f'tasklist /FI "PID eq {parent_pid}" 2^>NUL | find "{parent_pid}" >NUL',
+        'if not errorlevel 1 (',
+        '    timeout /t 1 /nobreak >NUL',
+        '    goto wait_parent',
+        ')',
+        '',
+        'echo  Sostituzione file in corso...',
+        ':replace',
+        f'copy /Y "{new_exe}" "{current_exe}" >NUL',
+        'if errorlevel 1 (',
+        '    timeout /t 1 /nobreak >NUL',
+        '    goto replace',
+        ')',
+        '',
+        'echo  Pulizia...',
+        f'del /F /Q "{new_exe}" >NUL 2>NUL',
+        '',
+    ]
+
+    if restart:
+        lines += [
+            'echo  Riavvio applicazione...',
+            f'start "" "{current_exe}"',
+        ]
+
+    lines += [
+        '',
+        'echo ============================================',
+        'echo  Aggiornamento completato con successo.',
+        'echo ============================================',
+        'echo.',
+        'exit /b 0',
+    ]
+
+    return "\r\n".join(lines)
+
+
+def apply_update(new_exe: Path) -> None:
+    """Replace the current executable with the downloaded one.
+
+    This creates ``update.bat`` in the temp directory, launches it,
+    and immediately exits the current process.  The batch script
+    waits for this process to disappear, replaces the file, and
+    optionally restarts.
+
+    Raises ``RuntimeError`` if we are not running as a frozen
+    PyInstaller bundle (the update mechanism only works for the
+    packaged .exe).
+    """
+    if not getattr(sys, "frozen", False):
+        raise RuntimeError(
+            "Apply update is only supported in the packaged .exe. "
+            "Run 'python build.spec' first."
+        )
+
+    current_exe = sys.executable
+    parent_pid = os.getpid()
+
+    UPDATE_DIR.mkdir(parents=True, exist_ok=True)
+    batch_path = UPDATE_DIR / "update.bat"
+
+    batch_content = _build_update_bat(
+        current_exe=current_exe,
+        new_exe=str(new_exe),
+        parent_pid=parent_pid,
+        restart=True,
+    )
+    batch_path.write_text(batch_content, encoding="ascii")
+
+    print()
+    print("  Applicazione aggiornamento...")
+    print(f"  Versione corrente: {CURRENT_VERSION}")
+    print(f"  Il programma verra' riavviato automaticamente.")
+    print()
+
+    logger.info(
+        "Launching update batch: %s (PID %d → %s)",
+        batch_path,
+        parent_pid,
+        current_exe,
+    )
+
+    subprocess.Popen(
+        ["cmd", "/c", str(batch_path)],
+        shell=True,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+
+    # Immediately exit so the batch script can replace the .exe
+    sys.exit(0)
+
+
+# ── Public entry point ─────────────────────────────────────────────────────────
+
+
+def check_and_apply(manifest_url: str | None = None) -> bool:
+    """Convenience: check for an update, download, and apply.
+
+    This is the main entry point called from ``main.py`` when the
+    ``--check-update`` flag is used.
+
+    Returns ``True`` if an update was applied (process will exit),
+    ``False`` if no update was needed or something failed.
+    """
+    print()
+    print(f"  pdf_converter v{CURRENT_VERSION}")
+    print("  Verifica aggiornamenti in corso...")
+    print()
+
+    update = check_for_update(manifest_url)
+    if update is None:
+        print("  Sei gia' all'ultima versione.")
+        print()
+        return False
+
+    print(f"  Nuova versione disponibile: v{update.version}")
+    if update.release_notes:
+        print(f"  Novita': {update.release_notes}")
+    print()
+
+    new_exe = download_update(update)
+    if new_exe is None:
+        print("  ERRORE: download fallito. Riprova piu' tardi.")
+        print()
+        return False
+
+    try:
+        apply_update(new_exe)
+        # Never reached (sys.exit inside apply_update)
+    except RuntimeError as e:
+        logger.warning("Cannot apply update (dev mode): %s", e)
+        print(f"  Aggiornamento scaricato in: {new_exe}")
+        print("  Copia manualmente il file sopra quello esistente.")
+        print()
+        return False
+
+    return True  # pragma: no cover (unreachable)

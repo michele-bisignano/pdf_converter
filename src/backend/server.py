@@ -31,7 +31,7 @@ app.add_middleware(
 # ── Cartelle ──────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
-FRONTEND_DIR = BASE_DIR / "frontend" / "dist"
+FRONTEND_DIR = BASE_DIR / "src" / "frontend" / "dist"
 TEMP_DIR = BASE_DIR / "temp"
 
 OUTPUT_DIR.mkdir(exist_ok=True)

@@ -47,6 +47,7 @@ a = Analysis(
         'uvicorn.protocols.websockets',
         'uvicorn.protocols.websockets.auto',
         'uvicorn.middleware',
+        'src.backend.updater',
     ],
     hookspath=[],
     hooksconfig={},
@@ -56,7 +57,7 @@ a = Analysis(
 )
 
 # Include frontend build statico (se esiste)
-frontend_dist = Path('frontend/dist')
+frontend_dist = Path('src/frontend/dist')
 if frontend_dist.is_dir():
     for f in frontend_dist.rglob('*'):
         if f.is_file():
