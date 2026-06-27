@@ -127,14 +127,34 @@ async def health():
 
 @app.post("/api/shutdown")
 async def shutdown():
-    """Gracefully shut down the server process."""
+    """Shut down the server process using the OS-native signal.
+
+    Uses the same pattern as AY's system_hal.py:
+      - Windows: CTRL_BREAK_EVENT kills the entire console process group.
+      - Unix:    SIGTERM for clean termination.
+      - Fallback: os._exit(0) if signal delivery fails.
+    """
     logger.info("Shutdown requested via API")
 
     async def _delayed_exit():
         await asyncio.sleep(0.5)
         import os
+        import platform
         import signal as sig_module
-        os.kill(os.getpid(), sig_module.SIGINT)
+
+        current_os = platform.system()
+        pid = os.getpid()
+
+        try:
+            if current_os == "Windows":
+                # CTRL_BREAK_EVENT terminates the entire console group,
+                # including uvicorn workers, closing the port for good.
+                os.kill(pid, sig_module.CTRL_BREAK_EVENT)
+            else:
+                os.kill(pid, sig_module.SIGTERM)
+        except Exception:
+            # Last resort: force exit only if signal delivery failed
+            os._exit(0)
 
     asyncio.create_task(_delayed_exit())
     return {"status": "shutting_down"}

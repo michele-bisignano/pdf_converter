@@ -19,6 +19,11 @@ function ShutdownButton() {
     } catch {
       // Server may close before responding
     }
+    // Best-effort: try to close this browser tab/window
+    // (works only for programmatically-opened windows)
+    setTimeout(() => {
+      try { window.close(); } catch { /* not supported */ }
+    }, 2000);
   };
 
   return (
