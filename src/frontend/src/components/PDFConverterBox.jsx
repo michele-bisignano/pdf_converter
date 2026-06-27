@@ -47,6 +47,7 @@ export default function PDFConverterBox() {
       const blob = await downloadFile(data.file_name);
 
       // Prova File System Access API (finestra "Salva con nome")
+      let saved = false;
       if ("showSaveFilePicker" in window) {
         try {
           const handle = await window.showSaveFilePicker({
@@ -61,21 +62,23 @@ export default function PDFConverterBox() {
           const writable = await handle.createWritable();
           await writable.write(blob);
           await writable.close();
-          return;
+          saved = true;
         } catch {
-          return;
+          // Utente ha annullato o errore — procedi con fallback
         }
       }
 
-      // Fallback: download diretto
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = data.file_name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (!saved) {
+        // Fallback: download diretto
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = data.file_name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch (err) {
       setError(err.message || "Errore durante la conversione");
     } finally {
