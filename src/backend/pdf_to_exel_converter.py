@@ -17,7 +17,9 @@ from src.backend.pdf_fallback import pdf_fallback
 
 
 def pdf_to_excel_converter_main(input_path, output_path):
-    """Main function to convert PDF data to an Excel file."""
+    """Main function to convert PDF data to an Excel file.
+    Returns a dict with success/warning/validation info.
+    """
     try:
         data = pdf_reader(input_path)
 
@@ -41,5 +43,6 @@ def pdf_to_excel_converter_main(input_path, output_path):
             data, header = columns_switcher(data, header)
 
         export_to_excel(data, header, output_path)
+        return {"success": True, "warning": False, "warning_message": "", "validation": None, "row_count": len(data) - 2}
     except Exception:
-        pdf_fallback(input_path, output_path)
+        return pdf_fallback(input_path, output_path)

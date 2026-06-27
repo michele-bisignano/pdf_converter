@@ -108,7 +108,7 @@ async def convert_pdf(
     out.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        pdf_to_excel_converter_main(str(pdf_path), str(out))
+        conv_result = pdf_to_excel_converter_main(str(pdf_path), str(out))
     except Exception as e:
         if pdf_path.exists():
             pdf_path.unlink()
@@ -123,6 +123,10 @@ async def convert_pdf(
         "success": True,
         "file_path": str(out),
         "file_name": out.name,
+        "warning": conv_result.get("warning", False),
+        "warning_message": conv_result.get("warning_message", ""),
+        "validation": conv_result.get("validation"),
+        "row_count": conv_result.get("row_count", 0),
     }
 
 

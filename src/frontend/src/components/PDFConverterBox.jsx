@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, FileText, Loader2, Download } from "lucide-react";
+import { Upload, FileText, Loader2, Download, AlertTriangle } from "lucide-react";
 import { convertPdf, downloadFile } from "../services/api";
 
 export default function PDFConverterBox() {
@@ -7,6 +7,7 @@ export default function PDFConverterBox() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [resultWarning, setResultWarning] = useState(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
 
@@ -19,6 +20,7 @@ export default function PDFConverterBox() {
     setFile(selectedFile);
     setError(null);
     setResult(null);
+    setResultWarning(null);
   }, []);
 
   const onDrop = useCallback((e) => {
@@ -39,14 +41,19 @@ export default function PDFConverterBox() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setResultWarning(null);
 
     try {
       const data = await convertPdf(file);
       setResult(data);
 
+      if (data.warning) {
+        setResultWarning(data.warning_message || "Attenzione: il saldo non corrisponde.");
+      }
+
       const blob = await downloadFile(data.file_name);
 
-      // Prova File System Access API (finestra "Salva con nome")
+      // Salva con nome — File System Access API (Chrome)
       let saved = false;
       if ("showSaveFilePicker" in window) {
         try {
@@ -64,12 +71,11 @@ export default function PDFConverterBox() {
           await writable.close();
           saved = true;
         } catch {
-          // Utente ha annullato o errore — procedi con fallback
+          // Utente annulla o errore → fallback
         }
       }
 
       if (!saved) {
-        // Fallback: download diretto
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -152,16 +158,25 @@ export default function PDFConverterBox() {
       )}
 
       {/* Error */}
-      {error && (
+      {error && !result && (
         <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
           {error}
         </div>
       )}
 
-      {/* Success */}
-      {result && (
-        <div className="text-green-400 text-sm bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
-          Conversione completata con successo! Il file Excel è stato salvato.
+      {/* Success (no warning) */}
+      {result && !resultWarning && (
+        <div className="text-green-400 text-sm bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-start gap-2">
+          <FileText size={18} className="shrink-0 mt-0.5" />
+          <span>PDF esportato correttamente.</span>
+        </div>
+      )}
+
+      {/* Success with validation warning */}
+      {result && resultWarning && (
+        <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 flex items-start gap-2">
+          <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+          <span>{resultWarning}</span>
         </div>
       )}
     </div>
