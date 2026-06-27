@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from .processing import (
     is_transaction_table,
@@ -6,6 +7,7 @@ from .processing import (
     extract_riepilogo_simple,
     drop_header_duplicates,
     fix_line_breaks,
+    normalize_amount,
     normalize_amounts_df,
     extract_riepilogo_rows,
     df_to_export_format,
@@ -51,6 +53,29 @@ def validate_saldo(saldo_iniziale: float | None, movements: pd.DataFrame, saldo_
             )
 
     return result
+
+
+def _safe_output_path(original_path: str) -> str:
+    """Return a writable path. If original is locked, append _1, _2, etc."""
+    if not os.path.exists(original_path):
+        return original_path
+    try:
+        with open(original_path, "a"):
+            os.utime(original_path, None)
+        return original_path
+    except PermissionError:
+        base, ext = os.path.splitext(original_path)
+        for i in range(1, 100):
+            candidate = f"{base}_{i}{ext}"
+            if not os.path.exists(candidate):
+                return candidate
+            try:
+                with open(candidate, "a"):
+                    os.utime(candidate, None)
+                return candidate
+            except PermissionError:
+                continue
+        return original_path
 
 
 def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
@@ -127,7 +152,7 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
         print("\tNessun movimento valido dopo la pulizia.")
         return result
 
-    # ---- Phase 6: add riepilogo rows (saldo iniziale / saldo finale) to export ----
+    # ---- Phase 6: validation (BEFORE adding riepilogo rows) ----
     saldo_iniziale_val = riepilogo_vals.get('saldo_iniziale')
     saldo_finale_val = riepilogo_vals.get('saldo_finale')
 
@@ -144,27 +169,6 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
                 amount_d = r.get('Addebiti') if 'Addebiti' in r else None
                 saldo_finale_val = normalize_amount(amount_a) if pd.notna(amount_a) else normalize_amount(amount_d)
 
-    # Prepara righe saldo da inserire nell'export
-    export_df = movements.copy()
-    if saldo_iniziale_val is not None:
-        saldo_row = {col: None for col in export_df.columns}
-        saldo_row['Descrizione'] = 'SALDO INIZIALE'
-        if saldo_iniziale_val >= 0:
-            saldo_row['Accrediti'] = round(saldo_iniziale_val, 2)
-        else:
-            saldo_row['Addebiti'] = round(abs(saldo_iniziale_val), 2)
-        export_df = pd.concat([pd.DataFrame([saldo_row]), export_df], ignore_index=True)
-
-    if saldo_finale_val is not None:
-        saldo_row = {col: None for col in export_df.columns}
-        saldo_row['Descrizione'] = 'SALDO FINALE'
-        if saldo_finale_val >= 0:
-            saldo_row['Accrediti'] = round(saldo_finale_val, 2)
-        else:
-            saldo_row['Addebiti'] = round(abs(saldo_finale_val), 2)
-        export_df = pd.concat([export_df, pd.DataFrame([saldo_row])], ignore_index=True)
-
-    # ---- Phase 7: validation ----
     validation = validate_saldo(saldo_iniziale_val, movements, saldo_finale_val)
     result["validation"] = validation
 
@@ -173,7 +177,30 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
         result["warning_message"] = validation["messaggio"]
         print("\n\t" + validation["messaggio"])
 
+    # ---- Phase 7: add riepilogo rows (saldo iniziale / saldo finale) to export ----
+    export_df = movements.copy()
+    if saldo_iniziale_val is not None:
+        saldo_row = {col: None for col in export_df.columns}
+        saldo_row['Descrizione'] = 'SALDO INIZIALE'
+        if saldo_iniziale_val >= 0:
+            saldo_row['Accrediti'] = round(saldo_iniziale_val, 2)
+        else:
+            saldo_row['Addebiti'] = round(abs(saldo_iniziale_val), 2)
+        saldo_row_df = pd.DataFrame([saldo_row]).astype(export_df.dtypes.to_dict())
+        export_df = pd.concat([saldo_row_df, export_df], ignore_index=True)
+
+    if saldo_finale_val is not None:
+        saldo_row = {col: None for col in export_df.columns}
+        saldo_row['Descrizione'] = 'SALDO FINALE'
+        if saldo_finale_val >= 0:
+            saldo_row['Accrediti'] = round(saldo_finale_val, 2)
+        else:
+            saldo_row['Addebiti'] = round(abs(saldo_finale_val), 2)
+        saldo_row_df = pd.DataFrame([saldo_row]).astype(export_df.dtypes.to_dict())
+        export_df = pd.concat([export_df, saldo_row_df], ignore_index=True)
+
     # ---- Phase 8: write to Excel ----
+    output_path = _safe_output_path(output_path)
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         export_df.to_excel(writer, index=False, sheet_name="Movimenti")
         worksheet = writer.sheets["Movimenti"]
