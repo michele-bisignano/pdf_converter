@@ -214,6 +214,7 @@ def draw_column_lines_on_pdf(headers, x_coords, table_bottom_y, input_pdf, line_
 
         header_rects = get_header_rects(page, headers)
         if not header_rects:
+            writer.add_page(reader.pages[i])
             continue
 
         header_top_y = get_header_top_y(header_rects)

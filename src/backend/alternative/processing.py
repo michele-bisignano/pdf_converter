@@ -6,6 +6,8 @@ Applies the same cleaning logic used by the deterministic pipeline
 but works on DataFrames produced by pd.read_html.
 """
 
+from __future__ import annotations
+
 import re
 import pandas as pd
 from io import StringIO
@@ -171,10 +173,13 @@ def normalize_amount(value):
     - Already numeric values  (300 -> 3.0)
     - Trailing junk chars     ('+240.434,08 \xa0' -> 240434.08)
     """
-    if value is None or (isinstance(value, float) and pd.isna(value)):
-        return None
-    if isinstance(value, (int, float)):
-        return round(value / 100, 2)
+    if isinstance(value, float):
+        # Float from pandas: already in euro, keep as-is
+        return round(value, 2) if not pd.isna(value) else None
+    if isinstance(value, int):
+        # Integer from pandas: already in euro (pandas parsed the HTML cell
+        # as a clean integer, meaning the original had no cent-based format)
+        return float(value)
 
     s = str(value).strip()
     if not s:

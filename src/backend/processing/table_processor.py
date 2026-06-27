@@ -61,16 +61,22 @@ def fix_line_breaks(table, header):
     data_index = find_substring_in_array(header, "data")
     descrizione_index = find_substring_in_array(header, "descrizione")
 
+    if data_index == -1 or descrizione_index == -1:
+        print("WARNING: data or descrizione column not found -- skipping fix_line_breaks")
+        return table
+
     new_table = []
     if table:
         new_table.append(table[0])
 
     for i in range(1, len(table) - 1):
         row = table[i]
-        data_value = row[data_index]
+        data_value = row[data_index] if data_index < len(row) else None
         if data_value is None or not str(data_value).strip():
             if new_table:
-                new_table[-1][descrizione_index] += " " + row[descrizione_index]
+                curr = row[descrizione_index] if descrizione_index < len(row) else None
+                prev = new_table[-1][descrizione_index] if descrizione_index < len(new_table[-1]) else None
+                new_table[-1][descrizione_index] = (prev or "") + " " + (curr or "")
             else:
                 new_table.append(row)
         else:
@@ -86,8 +92,8 @@ def columns_switcher(table, header):
     final_header_indexes = [0, 2, 5, 6]
     initial_header_indexes = []
 
-    credit_aliases = ["dare", "entrate", "credito"]
-    debit_aliases = ["avere", "uscite", "debito"]
+    credit_aliases = ["avere", "entrate", "credito"]   # "avere" = crediti/entrate
+    debit_aliases = ["dare", "uscite", "debito"]        # "dare" = debiti/uscite
 
     initial_header_indexes.append(find_substring_in_array(header, "data"))
     initial_header_indexes.append(find_substring_in_array(header, "descrizione"))

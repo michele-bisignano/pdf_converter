@@ -63,13 +63,15 @@ def pdf_to_excel_converter_main(input_path, output_path):
             low = str(col).lower()
             if 'descrizione' in low:
                 col_map[col] = 'Descrizione'
-            elif 'accredito' in low or 'credito' in low or 'entrate' in low or 'dare' in low:
+            elif 'accredito' in low or 'credito' in low or 'entrate' in low or 'avere' in low:
                 col_map[col] = 'Accrediti'
-            elif 'addebito' in low or 'debito' in low or 'uscite' in low or 'avere' in low:
+            elif 'addebito' in low or 'debito' in low or 'uscite' in low or 'dare' in low:
                 col_map[col] = 'Addebiti'
         df_std = df.rename(columns=col_map)
         for col_name in ['Accrediti', 'Addebiti']:
             if col_name in df_std.columns:
+                df_std[col_name] = df_std[col_name].astype(str).str.replace('.', '', regex=False)
+                df_std[col_name] = df_std[col_name].str.replace(',', '.', regex=False)
                 df_std[col_name] = pd.to_numeric(df_std[col_name], errors='coerce')
 
         validation = validate_saldo(df_std)

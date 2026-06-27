@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { Power } from "lucide-react";
 import PDFConverterBox from "./components/PDFConverterBox";
+import UpdateBanner from "./components/UpdateBanner";
 
 /**
  * Shutdown button that sends a POST request to the backend
@@ -67,6 +68,7 @@ const FEATURES = [
 export default function App() {
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
+      <UpdateBanner />
       <ShutdownButton />
       <header className="mb-12 mt-8 text-center">
         <motion.h1

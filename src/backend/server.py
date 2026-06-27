@@ -200,7 +200,7 @@ async def convert_pdf(
             pdf_path.unlink()
 
     return ConvertResponse(
-        success=True,
+        success=conv_result.get("success", False),
         file_path=str(out),
         file_name=out.name,
         warning=conv_result.get("warning", False),

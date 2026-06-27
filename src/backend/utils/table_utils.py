@@ -15,8 +15,8 @@ def find_any_word_in_array(array, search_string_array):
 
 
 def max_row_length(table):
-    max_len = max(len(row) for row in table)
-    return max_len
+    n = max(len(row) for row in table)
+    return [f"Col{i}" for i in range(n)]
 
 
 def words_counter(text):
@@ -37,8 +37,7 @@ def swap_elements(array, element1, element2):
     if element1 in array and element2 in array:
         index1 = array.index(element1)
         index2 = array.index(element2)
-        if index2 > index1:
-            array = switch_cell(array, index1, index2)
+        array = switch_cell(array, index1, index2)
     return array
 
 
