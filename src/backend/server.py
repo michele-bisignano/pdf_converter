@@ -4,6 +4,7 @@ Exposes REST endpoints for PDF-to-Excel conversion.
 """
 
 import asyncio
+import threading
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -127,36 +128,28 @@ async def health():
 
 @app.post("/api/shutdown")
 async def shutdown():
-    """Shut down the server process using the OS-native signal.
+    """Shut down the server process.
 
-    Uses the same pattern as AY's system_hal.py:
-      - Windows: CTRL_BREAK_EVENT kills the entire console process group.
-      - Unix:    SIGTERM for clean termination.
-      - Fallback: os._exit(0) if signal delivery fails.
+    Uses a threading.Timer to delay the kill so the HTTP response
+    can be sent first.  On Windows the kill goes through the native
+    kernel32.ExitProcess to ensure the process actually terminates
+    (signal-based approaches like CTRL_BREAK_EVENT fail when the
+    process runs without a console, e.g. from Git Bash).
     """
     logger.info("Shutdown requested via API")
 
-    async def _delayed_exit():
-        await asyncio.sleep(0.5)
+    def _kill():
         import os
         import platform
-        import signal as sig_module
 
-        current_os = platform.system()
-        pid = os.getpid()
-
-        try:
-            if current_os == "Windows":
-                # CTRL_BREAK_EVENT terminates the entire console group,
-                # including uvicorn workers, closing the port for good.
-                os.kill(pid, sig_module.CTRL_BREAK_EVENT)
-            else:
-                os.kill(pid, sig_module.SIGTERM)
-        except Exception:
-            # Last resort: force exit only if signal delivery failed
+        if platform.system() == "Windows":
+            # Windows-native: ExitProcess kills the process unconditionally
+            import ctypes
+            ctypes.windll.kernel32.ExitProcess(0)
+        else:
             os._exit(0)
 
-    asyncio.create_task(_delayed_exit())
+    threading.Timer(0.5, _kill).start()
     return {"status": "shutting_down"}
 
 
