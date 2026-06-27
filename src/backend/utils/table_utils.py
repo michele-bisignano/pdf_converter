@@ -16,7 +16,7 @@ def find_any_word_in_array(array, search_string_array):
 
 def max_row_length(table):
     max_len = max(len(row) for row in table)
-    return [str(i) for i in range(max_len)]
+    return max_len
 
 
 def words_counter(text):
