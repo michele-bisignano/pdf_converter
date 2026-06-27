@@ -1,4 +1,4 @@
-# This file contains functions to handle Credem and Credit_Agricole pdf
+# Functions to handle Credem and Credit Agricole bank PDF layouts
 import io
 import fitz  # PyMuPDF
 import re
@@ -14,7 +14,7 @@ def handle_exceptional_layouts(header, input_path):
     If the table does not belong to either bank, the function returns None.
     """
 
-    # Define the expected headers for Credem and Crédit Agricole banks
+    # Define the expected headers for Credem and Credit Agricole banks
     credem_header = [None, 'DATA VALUTA', 'DESCRIZIONE OPERAZIONE', 'IMPORTO A DEBITO', None]
     credit_agricole_header = [
         "Data", 
@@ -41,7 +41,7 @@ def handle_exceptional_layouts(header, input_path):
             "IMPORTO A DEBITO", 
             "IMPORTO A CREDITO"
         ]
-        # Handle the Credem file using the adjusted header
+        # Process the Credem file with the adjusted header
         handle_credem_file(header, input_path)
         
         # Read the processed PDF file with columns into a table
@@ -54,9 +54,9 @@ def handle_exceptional_layouts(header, input_path):
         # Write the dates back to the table
         table = column_writer(table, 0, left_column_data, 2)  # The value 2 is due to the presence of the header and the initial balance
 
-    # Check if the header matches the Crédit Agricole header
+    # Check if the header matches the Credit Agricole header
     elif header == credit_agricole_header:
-        # Handle the Crédit Agricole file
+        # Process the Credit Agricole file
         handle_credit_agricole(header, input_path)
 
         # Read the processed PDF file with columns into a table
@@ -256,7 +256,7 @@ def find_saldo_finale(doc):
     return None
 
 
-# Section dedicated to processing files from Credem
+# -- Credem bank processing --
 
 def handle_credem_file(header, input_path):
     """
@@ -315,7 +315,7 @@ def extract_dates_from_left_column(data):
     
     return dates
 
-# Section dedicated to processing files from Crédit Agricole
+# -- Credit Agricole bank processing --
 
 def handle_credit_agricole(header, input_path):    
     """

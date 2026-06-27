@@ -35,7 +35,9 @@ def extract_tables_mistral(input_path: str) -> list[str]:
             confidence_scores_granularity="page",
         )
     except Exception as e:
-        print(f"\n\tERRORE API Mistral: {e}\n")
+        print(f"
+	Mistral API error: {e}
+")
         return []
 
     html_tables: list[str] = []

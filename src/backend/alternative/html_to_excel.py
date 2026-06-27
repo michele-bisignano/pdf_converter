@@ -16,8 +16,8 @@ from .processing import (
 
 def validate_saldo(saldo_iniziale: float | None, movements: pd.DataFrame, saldo_finale: float | None) -> dict:
     """
-    Verifica: saldo_iniziale + accrediti_totali - addebiti_totali ≈ saldo_finale.
-    Restituisce un dict con esito e dettagli.
+    Validate: saldo_iniziale + total_credits - total_debits ≈ saldo_finale.
+    Returns a dict with result and details.
     """
     total_accrediti = movements['Accrediti'].sum() if 'Accrediti' in movements and not movements['Accrediti'].empty else 0
     total_addebiti = movements['Addebiti'].sum() if 'Addebiti' in movements and not movements['Addebiti'].empty else 0
@@ -47,9 +47,9 @@ def validate_saldo(saldo_iniziale: float | None, movements: pd.DataFrame, saldo_
         if diff > 0.01:
             result["valid"] = False
             result["messaggio"] = (
-                f"Attenzione: il saldo calcolato ({saldo_calcolato:,.2f}) "
-                f"non corrisponde al saldo finale dichiarato ({saldo_finale:,.2f}). "
-                f"Differenza: {diff:,.2f}."
+                f"Warning: the calculated balance ({saldo_calcolato:,.2f}) "
+                f"does not match the declared final balance ({saldo_finale:,.2f}). "
+                f"Difference: {diff:,.2f}."
             )
 
     return result
@@ -99,7 +99,7 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
     }
 
     if not html_tables:
-        print("\tNessuna tabella estratta dal documento.")
+        print("	No tables extracted from the document.")
         return result
 
     # ---- Phase 0: extract riepilogo from simple 2-column tables ----
@@ -110,7 +110,7 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
             riepilogo_vals.update(val)
 
     if riepilogo_vals:
-        print("\tRiepilogo conto:")
+        print("	Account summary:")
         for key, val in riepilogo_vals.items():
             if val is not None:
                 print("\t  {}: {:,.2f}".format(key.replace('_', ' ').title(), val))
@@ -129,7 +129,7 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
         all_frames.append(df)
 
     if not all_frames:
-        print("\tNessuna tabella transazioni trovata tra quelle OCR.")
+        print("	No transaction tables found among OCR results.")
         return result
 
     combined = pd.concat(all_frames, ignore_index=True)
@@ -149,14 +149,14 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
     movements = df_to_export_format(movements)
 
     if movements.empty:
-        print("\tNessun movimento valido dopo la pulizia.")
+        print("	No valid transactions after cleaning.")
         return result
 
     # ---- Phase 6: validation (BEFORE adding riepilogo rows) ----
     saldo_iniziale_val = riepilogo_vals.get('saldo_iniziale')
     saldo_finale_val = riepilogo_vals.get('saldo_finale')
 
-    # Cerca saldo iniziale/finale anche dalle righe di riepilogo della transazione
+    # Also look for initial/final balance in transaction summary rows
     if saldo_iniziale_val is None and not riepilogo.empty:
         for _, r in riepilogo.iterrows():
             desc = str(r.get('Descrizione', '')).lower() if pd.notna(r.get('Descrizione')) else ''
@@ -214,7 +214,7 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
                     cell.number_format = '#,##0.00'
 
     row_count = len(movements)
-    print("\tSaved {} movimenti -> {}".format(row_count, output_path))
+    print("	Saved {} transactions -> {}".format(row_count, output_path))
     result["success"] = True
     result["row_count"] = row_count
     return result

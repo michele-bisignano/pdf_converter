@@ -1,9 +1,9 @@
 """
 pdf_converter - Entry point.
 
-Doppio click  → Avvia server FastAPI + apre browser su localhost:8765
---cli         → Modalita solo backend (CLI tradizionale)
---port NUM    → Porta personalizzata (default 8765)
+Double-click  -> Launches FastAPI server and opens browser at localhost:8765
+--cli         -> Backend-only mode (traditional CLI)
+--port NUM    -> Custom port (default: 8765)
 """
 
 import argparse
@@ -21,6 +21,14 @@ logger = logging.getLogger("pdf_converter")
 
 
 def _setup_logging(verbose: bool = False) -> None:
+    """Configure logging level and format.
+
+    Sets DEBUG level when verbose is True, otherwise INFO.
+    Suppresses verbose uvicorn access logs.
+
+    Args:
+        verbose: Enable debug-level logging when True.
+    """
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
@@ -32,23 +40,31 @@ def _setup_logging(verbose: bool = False) -> None:
 
 
 def _open_browser(port: int) -> None:
-    """Aspetta che il server sia pronto e apre il browser."""
+    """Wait for the server to be ready and open the browser.
+
+    Args:
+        port: The port the server is listening on.
+    """
     url = f"http://localhost:{port}"
     time.sleep(1.5)
-    logger.info("Apro browser a %s ...", url)
+    logger.info("Opening browser at %s ...", url)
     try:
         webbrowser.open(url)
     except Exception:
-        logger.warning("Impossibile aprire il browser automaticamente.")
+        logger.warning("Could not open browser automatically.")
 
 
 def run_server(port: int) -> None:
-    """Avvia il server FastAPI."""
-    logger.info("Avvio server pdf_converter su http://localhost:%d", port)
-    print(f"\n  Server in ascolto su http://localhost:{port}")
-    print(f"  Documentazione API su http://localhost:{port}/docs\n")
+    """Start the FastAPI server.
 
-    # Thread per aprire browser dopo un attimo
+    Args:
+        port: The port to bind the server to.
+    """
+    logger.info("Starting pdf_converter server on http://localhost:%d", port)
+    print(f"\n  Server listening on http://localhost:{port}")
+    print(f"  API documentation at http://localhost:{port}/docs\n")
+
+    # Thread to open browser after a short delay
     browser_thread = threading.Thread(
         target=_open_browser, args=(port,), daemon=True
     )
@@ -58,14 +74,19 @@ def run_server(port: int) -> None:
 
 
 def run_cli() -> None:
-    """Esegue la conversione in modalita CLI tradizionale."""
+    """Run the conversion in traditional CLI mode."""
     from src.backend.main import main as cli_main
     cli_main()
 
 
 def handle_signal(signum, frame) -> None:
-    """Gestisce Ctrl+C con messaggio pulito."""
-    print("\n\nChiusura.\n")
+    """Handle Ctrl+C with a clean shutdown message.
+
+    Args:
+        signum: Signal number.
+        frame: Current stack frame.
+    """
+    print("\n\nShutdown.\n")
     sys.exit(0)
 
 
@@ -73,49 +94,49 @@ def main() -> None:
     signal.signal(signal.SIGINT, handle_signal)
 
     parser = argparse.ArgumentParser(
-        description="pdf_converter - Convertitore PDF -> Excel",
+        description="pdf_converter - PDF to Excel Converter",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Esempi:
-  main.py                        Avvia server web con interfaccia grafica
-  main.py --cli                  Modalita solo backend (CLI)
-  main.py --port 9000            Server su porta 9000
-  main.py --check-update         Verifica aggiornamenti all'avvio
+Examples:
+  main.py                        Start web server with GUI
+  main.py --cli                  Backend-only mode (CLI)
+  main.py --port 9000            Server on port 9000
+  main.py --check-update         Check for updates on startup
         """,
     )
     parser.add_argument(
         "--cli",
         action="store_true",
-        help="Avvia in modalita solo backend (CLI tradizionale)",
+        help="Start in backend-only mode (traditional CLI)",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=8765,
-        help="Porta per il server web (default: 8765)",
+        help="Port for the web server (default: 8765)",
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Logging dettagliato"
+        "--verbose", "-v", action="store_true", help="Detailed logging"
     )
     parser.add_argument(
-        "--version", action="version", version="pdf_converter 1.0.0"
+        "--version", action="version", version="pdf_converter 2.0.0"
     )
     parser.add_argument(
         "--check-update",
         action="store_true",
-        help="Verifica presenza aggiornamenti all'avvio",
+        help="Check for updates on startup",
     )
     parser.add_argument(
         "--update-manifest-url",
         type=str,
         default=None,
-        help=argparse.SUPPRESS,  # Opzione avanzata, nascosta da --help
+        help=argparse.SUPPRESS,  # Advanced option, hidden from --help
     )
 
     args = parser.parse_args()
     _setup_logging(args.verbose)
 
-    # ── Auto-update check ──────────────────────────────────────────────────
+    # -- Auto-update check --------------------------------------------------------
     if args.check_update:
         from src.backend.updater import check_and_apply
 
@@ -123,7 +144,7 @@ Esempi:
         if applied:
             return  # Process will exit via sys.exit inside apply_update
 
-    # ── Normal startup ─────────────────────────────────────────────────────
+    # -- Normal startup -----------------------------------------------------------
     if args.cli:
         run_cli()
     else:

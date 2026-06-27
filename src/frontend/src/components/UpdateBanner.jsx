@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 
 /**
- * Banner di aggiornamento automatico.
+ * Auto-update banner.
  *
- * Mostra un avviso quando è disponibile una nuova versione.
- * Al click su "Aggiorna" scarica il nuovo binario, riavvia l'app
- * e ricarica il frontend appena il server torna online.
+ * Shows a notification when a new version is available.
+ * On click "Update" downloads the new binary, restarts the app
+ * and reloads the frontend once the server comes back online.
  *
- * USO: importa e metti <UpdateBanner /> in App.jsx o nel layout principale.
+ * USAGE: import and place <UpdateBanner /> in App.jsx or the main layout.
  *
  *   import UpdateBanner from "./UpdateBanner";
  *   export default function App() {
  *     return (
  *       <>
  *         <UpdateBanner />
- *         // ... resto dell'app
+ *         // ... rest of the app
  *       </>
  *     );
  *   }
@@ -23,14 +23,14 @@ export default function UpdateBanner() {
   const [updateInfo, setUpdateInfo] = useState(null); // { version: string }
   const [status, setStatus]         = useState("idle"); // idle | downloading | restarting
 
-  // Controlla update al mount
+  // Check for updates on mount
   useEffect(() => {
     fetch("/api/update/check")
       .then((r) => r.json())
       .then((data) => {
         if (data.available) setUpdateInfo({ version: data.version });
       })
-      .catch(() => {}); // silenzioso se il server non risponde
+      .catch(() => {}); // silent if server does not respond
   }, []);
 
   const handleUpdate = async () => {
@@ -39,11 +39,11 @@ export default function UpdateBanner() {
     try {
       await fetch("/api/update/apply", { method: "POST" });
     } catch {
-      // Il server potrebbe chiudersi prima di rispondere — ok
+      // Server may close before responding — ok
     }
 
-    // Inizia a pollare /api/health ogni 2s
-    // Quando il server torna su → ricarica la pagina
+    // Start polling /api/health every 2s
+    // When the server is back up -> reload the page
     setStatus("restarting");
     const poll = setInterval(() => {
       fetch("/api/health")
@@ -51,7 +51,7 @@ export default function UpdateBanner() {
           clearInterval(poll);
           window.location.reload();
         })
-        .catch(() => {}); // ancora offline, riprova
+        .catch(() => {}); // still offline, retry
     }, 2000);
   };
 
@@ -60,14 +60,14 @@ export default function UpdateBanner() {
   return (
     <div style={styles.banner}>
       <span style={styles.text}>
-        {status === "idle" && `🔄 Versione ${updateInfo.version} disponibile`}
-        {status === "downloading" && "⏬ Download in corso…"}
-        {status === "restarting" && "⚙️ Riavvio in corso… l'app si aggiornerà tra poco"}
+        {status === "idle" && `🔄 Version ${updateInfo.version} available`}
+        {status === "downloading" && "⏬ Downloading…"}
+        {status === "restarting" && "⚙️ Restarting… the app will update shortly"}
       </span>
 
       {status === "idle" && (
         <button style={styles.button} onClick={handleUpdate}>
-          Aggiorna ora
+          Update now
         </button>
       )}
     </div>

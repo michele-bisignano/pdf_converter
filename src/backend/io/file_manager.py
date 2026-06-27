@@ -41,10 +41,10 @@ def input_file_path_finder():
 
     if len(pdf_files) != 1:
         if len(pdf_files) > 1:
-            print("\n\tERRORE: Sono presenti {} file PDF tra root e src/.".format(len(pdf_files)))
-            print("\tRimuovi i file PDF in eccesso e riprova.\n")
+            print("\n\tERROR: {} PDF files found between root and src/.".format(len(pdf_files)))
+            print("\tRemove the extra PDF files and try again.\n")
         else:
-            print("\n\tERRORE: Nessun file PDF trovato in root o in src/.\n")
+            print("\n\tERROR: No PDF file found in root or src/.\n")
         input("Press Enter to exit...")
         sys.exit()
 

@@ -51,7 +51,7 @@ ENV_MANIFEST_URL = "PDF_CONVERTER_UPDATE_URL"
 
 UPDATE_DIR = Path(tempfile.gettempdir()) / "pdf_converter_update"
 
-CURRENT_VERSION = "1.0.0"
+CURRENT_VERSION = "2.0.0"
 
 
 # ── Data ───────────────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ def download_update(update: UpdateInfo) -> Path | None:
     if exe_path.exists():
         exe_path.unlink()
 
-    logger.info("Downloading update v%s da %s ...", update.version, update.url)
+    logger.info("Downloading update v%s from %s ...", update.version, update.url)
 
     try:
         req = Request(update.url, headers={"User-Agent": "pdf_converter-updater/1.0"})
@@ -213,9 +213,9 @@ def download_update(update: UpdateInfo) -> Path | None:
 
     # Verify checksum if the manifest provided one
     if update.checksum:
-        print(f"  Verifica checksum... ", end="", flush=True)
+        print(f"  Verifying checksum... ", end="", flush=True)
         if not _verify_checksum(exe_path, update.checksum, update.checksum_type):
-            print("FALLITA")
+            print("FAILED")
             exe_path.unlink(missing_ok=True)
             return None
         print("OK")
@@ -240,10 +240,10 @@ def _build_update_bat(
     """
     lines = [
         '@echo off',
-        'title pdf_converter - Aggiornamento in corso...',
+        'title pdf_converter - Updating...',
         'echo.',
         'echo ============================================',
-        'echo  Aggiornamento pdf_converter in corso...',
+        'echo  Updating pdf_converter...',
         'echo ============================================',
         'echo.',
         '',
@@ -254,7 +254,7 @@ def _build_update_bat(
         '    goto wait_parent',
         ')',
         '',
-        'echo  Sostituzione file in corso...',
+        'echo  Replacing file...',
         ':replace',
         f'copy /Y "{new_exe}" "{current_exe}" >NUL',
         'if errorlevel 1 (',
@@ -262,21 +262,21 @@ def _build_update_bat(
         '    goto replace',
         ')',
         '',
-        'echo  Pulizia...',
+        'echo  Cleaning up...',
         f'del /F /Q "{new_exe}" >NUL 2>NUL',
         '',
     ]
 
     if restart:
         lines += [
-            'echo  Riavvio applicazione...',
+            'echo  Restarting application...',
             f'start "" "{current_exe}"',
         ]
 
     lines += [
         '',
         'echo ============================================',
-        'echo  Aggiornamento completato con successo.',
+        'echo  Update completed successfully.',
         'echo ============================================',
         'echo.',
         'exit /b 0',
@@ -318,9 +318,9 @@ def apply_update(new_exe: Path) -> None:
     batch_path.write_text(batch_content, encoding="ascii")
 
     print()
-    print("  Applicazione aggiornamento...")
-    print(f"  Versione corrente: {CURRENT_VERSION}")
-    print(f"  Il programma verra' riavviato automaticamente.")
+    print("  Applying update...")
+    print(f"  Current version: {CURRENT_VERSION}")
+    print("  The program will restart automatically.")
     print()
 
     logger.info(
@@ -354,23 +354,23 @@ def check_and_apply(manifest_url: str | None = None) -> bool:
     """
     print()
     print(f"  pdf_converter v{CURRENT_VERSION}")
-    print("  Verifica aggiornamenti in corso...")
+    print("  Checking for updates...")
     print()
 
     update = check_for_update(manifest_url)
     if update is None:
-        print("  Sei gia' all'ultima versione.")
+        print("  You already have the latest version.")
         print()
         return False
 
     print(f"  Nuova versione disponibile: v{update.version}")
     if update.release_notes:
-        print(f"  Novita': {update.release_notes}")
+        print(f"  What's new: {update.release_notes}")
     print()
 
     new_exe = download_update(update)
     if new_exe is None:
-        print("  ERRORE: download fallito. Riprova piu' tardi.")
+        print("  ERROR: download failed. Try again later.")
         print()
         return False
 
@@ -379,8 +379,8 @@ def check_and_apply(manifest_url: str | None = None) -> bool:
         # Never reached (sys.exit inside apply_update)
     except RuntimeError as e:
         logger.warning("Cannot apply update (dev mode): %s", e)
-        print(f"  Aggiornamento scaricato in: {new_exe}")
-        print("  Copia manualmente il file sopra quello esistente.")
+        print(f"  Update downloaded to: {new_exe}")
+        print("  Manually copy the file over the existing one.")
         print()
         return False
 

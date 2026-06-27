@@ -73,7 +73,7 @@ Copia l'ID (la stringa tra `/d/` e `/view`).
 ### Crea version.json:
 ```json
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "windows_url": "https://drive.google.com/uc?export=download&id=ID_EXE_WINDOWS&confirm=t",
   "mac_url": "https://drive.google.com/uc?export=download&id=ID_ZIP_MAC&confirm=t"
 }
@@ -82,7 +82,7 @@ Carica su Drive e copia il suo ID.
 
 ### Configura updater.py:
 ```python
-CURRENT_VERSION  = "1.0.0"
+CURRENT_VERSION  = "2.0.0"
 VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_JSON"
 ```
 

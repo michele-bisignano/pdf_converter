@@ -10,7 +10,7 @@ def export_to_excel(data, header, output_path):
         df = pd.DataFrame(data, columns=max_row_length(data))
 
     df.to_excel(output_path, index=False)
-    print(f"File Excel salvato in: {output_path}")
+    print(f"Excel file saved to: {output_path}")
     check_table(data)
 
 
@@ -45,7 +45,7 @@ def check_table(table):
                 else:
                     raise ValueError("Both credit and debit values are None")
     except ValueError:
-        print("\n\tERRORE: La tabella non e' stata esportata correttamente")
+        print("\n\tERROR: The table was not exported correctly")
         return
 
     debit_sum = abs(debit_sum)
@@ -61,9 +61,9 @@ def check_table(table):
 
     if saldo_finale_exported_table is not None and isinstance(saldo_finale_exported_table, (int, float)):
         if saldo_finale_calculated == saldo_finale_exported_table:
-            print("La tabella e' stata esportata correttamente")
+            print("The table was exported correctly")
         else:
-            print("\n\tERRORE: la tabella NON e' stata esportata correttamente")
-            print(f"Saldo mancante: {saldo_finale_exported_table - saldo_finale_calculated}")
+            print("\n\tERROR: the table was NOT exported correctly")
+            print(f"Missing balance: {saldo_finale_exported_table - saldo_finale_calculated}")
     else:
-        print("\n\tERRORE: Non e' stato trovato il saldo finale")
+        print("\n\tERROR: Final balance not found")

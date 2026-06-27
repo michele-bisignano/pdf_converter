@@ -58,18 +58,18 @@ async def lifespan(app: FastAPI):
 
 
 def _serve_frontend() -> None:
-    """Monta i file statici del frontend React, se presenti."""
+    """Mount React frontend static files if present."""
     if FRONTEND_DIR.is_dir():
         app.mount(
             "/",
             StaticFiles(directory=str(FRONTEND_DIR), html=True),
             name="frontend",
         )
-        logger.info("Frontend statico montato da %s", FRONTEND_DIR)
+        logger.info("Frontend static files mounted from %s", FRONTEND_DIR)
     else:
         logger.warning(
-            "Frontend dist non trovato in %s. "
-            "Solo API disponibili. Builda il frontend con 'npm run build'.",
+            "Frontend dist not found at %s. "
+            "Only API endpoints available. Build the frontend with 'npm run build'.",
             FRONTEND_DIR,
         )
 
@@ -80,10 +80,10 @@ def _serve_frontend() -> None:
             display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
             <div style="text-align:center">
             <h1>pdf_converter</h1>
-            <p>Frontend non buildato.</p>
-            <p style="color:#a1a1aa">Vai in <code>frontend/</code> ed esegui <code>npm run build</code>.</p>
+            <p>Frontend not built.</p>
+            <p style="color:#a1a1aa">Go to <code>frontend/</code> and run <code>npm run build</code>.</p>
             <hr style="border-color:#27272a;width:200px">
-            <p style="font-size:0.875rem">API disponibili su <a href="/docs" style="color:#3b82f6">/docs</a></p>
+            <p style="font-size:0.875rem">API available at <a href="/docs" style="color:#3b82f6">/docs</a></p>
             </div></body></html>
             """)
 
@@ -92,13 +92,13 @@ def _serve_frontend() -> None:
 
 app = FastAPI(
     title="pdf_converter",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
-# CORS per sviluppo frontend (React su altra porta).
-# Nota: Niente allow_credentials=True con allow_origins=["*"]: i browser
-# lo bloccano per specifica Fetch. Se servono credenziali, elencare le origini.
+# CORS for frontend development (React on a different port).
+# Note: No allow_credentials=True with allow_origins=["*"]: browsers
+# block it per the Fetch specification. If credentials are needed, list the origins.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -107,14 +107,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include update router (se presente)
+# Include update router (if present)
 try:
     from src.backend.update_router import router as update_router
 
     app.include_router(update_router)
-    logger.info("Update router montato")
+    logger.info("Update router mounted")
 except ImportError:
-    logger.info("Update router non disponibile")
+    logger.info("Update router not available")
 
 
 # -- Endpoint API -------------------------------------------------------------
@@ -131,10 +131,10 @@ async def convert_pdf(
     output_path: str = Form(None),
 ):
     """
-    Carica un PDF, lo converte in Excel, restituisce il percorso del file generato.
+    Upload a PDF, convert it to Excel, return the path of the generated file.
     """
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Il file deve essere un PDF.")
+        raise HTTPException(status_code=400, detail="File must be a PDF.")
 
     temp_id = uuid.uuid4().hex
     pdf_path = TEMP_DIR / f"{temp_id}.pdf"
@@ -142,7 +142,7 @@ async def convert_pdf(
         content = await file.read()
         pdf_path.write_bytes(content)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Errore salvataggio file: {e}")
+        raise HTTPException(status_code=500, detail=f"Error saving file: {e}")
 
     if output_path:
         out = Path(output_path)
@@ -158,7 +158,7 @@ async def convert_pdf(
         )
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Errore conversione: {e}"
+            status_code=500, detail=f"Conversion error: {e}"
         )
     finally:
         if pdf_path.exists():
@@ -177,13 +177,13 @@ async def convert_pdf(
 
 @app.get("/api/download/{filename:path}")
 async def download_file(filename: str):
-    """Scarica un file Excel generato."""
+    """Download a generated Excel file."""
     resolved = (OUTPUT_DIR / filename).resolve()
     if not str(resolved).startswith(str(OUTPUT_DIR.resolve())):
-        raise HTTPException(status_code=400, detail="Percorso non consentito.")
+        raise HTTPException(status_code=400, detail="Path not allowed.")
 
     if not resolved.exists() or not resolved.is_file():
-        raise HTTPException(status_code=404, detail="File non trovato.")
+        raise HTTPException(status_code=404, detail="File not found.")
 
     return FileResponse(
         path=str(resolved),

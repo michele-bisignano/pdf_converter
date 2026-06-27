@@ -13,7 +13,7 @@ export default function PDFConverterBox() {
 
   const handleFile = useCallback((selectedFile) => {
     if (!selectedFile || !selectedFile.name.toLowerCase().endsWith(".pdf")) {
-      setError("Seleziona un file PDF valido.");
+      setError("Please select a valid PDF file.");
       setFile(null);
       return;
     }
@@ -48,7 +48,7 @@ export default function PDFConverterBox() {
       setResult(data);
 
       if (data.warning) {
-        setResultWarning(data.warning_message || "Attenzione: il saldo non corrisponde.");
+        setResultWarning(data.warning_message || "Warning: the balance does not match.");
       }
 
       const blob = await downloadFile(data.file_name);
@@ -71,7 +71,7 @@ export default function PDFConverterBox() {
           await writable.close();
           saved = true;
         } catch {
-          // Utente annulla o errore → fallback
+          // User cancelled or error -> fallback
         }
       }
 
@@ -86,7 +86,7 @@ export default function PDFConverterBox() {
         URL.revokeObjectURL(url);
       }
     } catch (err) {
-      setError(err.message || "Errore durante la conversione");
+      setError(err.message || "Error during conversion");
     } finally {
       setLoading(false);
     }
@@ -116,8 +116,8 @@ export default function PDFConverterBox() {
         <Upload className="mx-auto mb-2 text-zinc-400" size={32} />
         <p className="text-zinc-400 text-sm">
           {dragging
-            ? "Rilascia il file qui"
-            : "Trascina il PDF qui o clicca per caricarlo"}
+            ? "Drop the file here"
+            : "Drag a PDF here or click to upload"}
         </p>
       </div>
 
@@ -146,12 +146,12 @@ export default function PDFConverterBox() {
           {loading ? (
             <>
               <Loader2 className="animate-spin" size={18} />
-              Conversione in corso...
+              Converting...
             </>
           ) : (
             <>
               <Download size={18} />
-              Converti in Excel
+              Convert to Excel
             </>
           )}
         </button>
@@ -168,7 +168,7 @@ export default function PDFConverterBox() {
       {result && !resultWarning && (
         <div className="text-green-400 text-sm bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-start gap-2">
           <FileText size={18} className="shrink-0 mt-0.5" />
-          <span>PDF esportato correttamente.</span>
+          <span>PDF exported successfully.</span>
         </div>
       )}
 

@@ -14,7 +14,7 @@ def find_row_with_data_and_descrizione(table):
     for row in table:
         if find_substring_in_array(row, "data") != -1 and find_substring_in_array(row, "descrizione") != -1:
             return row
-    print("\n\tATTENZIONE: intestazione non trovata\n")
+    print("\n\tWARNING: header not found\n")
     return []
 
 
@@ -39,7 +39,7 @@ def get_table_until_saldo_finale(table):
 def filter_table_by_descrizione(table, header):
     descrizione_index = find_substring_in_array(header, "descrizione")
     if descrizione_index == -1:
-        print("Colonna DESCRIZIONE non trovata")
+        print("DESCRIPTION column not found")
         return table
     return [row for row in table if row[descrizione_index] is not None]
 

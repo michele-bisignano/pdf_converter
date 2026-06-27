@@ -15,8 +15,8 @@ export async function convertPdf(file) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Errore sconosciuto" }));
-    throw new Error(err.detail || "Errore durante la conversione");
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || "Error during conversion");
   }
 
   return res.json();
@@ -24,6 +24,6 @@ export async function convertPdf(file) {
 
 export async function downloadFile(filename) {
   const res = await fetch(`${API_BASE}/download/${filename}`);
-  if (!res.ok) throw new Error("Download fallito");
+  if (!res.ok) throw new Error("Download failed");
   return res.blob();
 }

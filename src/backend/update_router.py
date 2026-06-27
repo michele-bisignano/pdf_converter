@@ -1,11 +1,11 @@
 """
-Router FastAPI per l'auto-updater.
+FastAPI router for the auto-updater.
 
-Aggiunge 2 endpoint a /api:
+Adds 2 endpoints under /api:
   GET  /api/update/check  → controlla se c'e' un update
   POST /api/update/apply  → scarica e applica l'update (riavvia l'app)
 
-Questo router viene incluso automaticamente da server.py.
+This router is automatically included by server.py.
 """
 
 import threading
@@ -20,8 +20,8 @@ _cached_version: str = ""
 @router.get("/update/check")
 def update_check():
     """
-    Controlla Drive per una versione piu recente.
-    Risposta: { available: bool, version: str }
+    Check for a newer version.
+    Response: { available: bool, version: str }
     """
     global _cached_version
     update = check_for_update()
@@ -37,9 +37,9 @@ def update_check():
 @router.post("/update/apply")
 def update_apply():
     """
-    Avvia il download e l'applicazione dell'update in background.
-    L'app si chiudera' e si riaprira' automaticamente.
-    Risposta: { status: "updating" }
+    Start the download and application of the update in the background.
+    The app will close and reopen automatically.
+    Response: { status: "updating" }
     """
     threading.Thread(
         target=check_and_apply,
