@@ -16,15 +16,22 @@ function ShutdownButton() {
   };
 
   return (
-    <button
+    <motion.button
       onClick={handleShutdown}
       disabled={shutting}
-      className="fixed top-4 right-4 z-[10000] flex items-center gap-1.5 px-3 py-1.5 rounded-full glass text-zinc-400 hover:text-red-400 hover:border-red-500/30 text-xs transition-colors duration-200 disabled:opacity-50"
-      title={shutting ? "Shutting down..." : "Exit application"}
+      className="fixed top-4 right-4 z-[10000] flex items-center gap-2 px-3 py-2
+        overflow-hidden rounded-full border border-white/10 bg-white/[0.03]
+        text-zinc-400 hover:text-red-400 text-xs transition-colors duration-300 disabled:opacity-50 group"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      title={shutting ? "Closing..." : "Exit"}
     >
-      <Power className="w-3.5 h-3.5" />
-      {shutting ? "Closing..." : "Exit"}
-    </button>
+      <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent
+        opacity-0 transition-opacity duration-500 group-hover:opacity-100
+        group-hover:animate-shimmer pointer-events-none" />
+      <Power className="w-3.5 h-3.5 relative z-10" />
+      <span className="relative z-10">{shutting ? "Closing..." : "Exit"}</span>
+    </motion.button>
   );
 }
 
