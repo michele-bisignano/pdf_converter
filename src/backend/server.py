@@ -57,6 +57,21 @@ async def lifespan(app: FastAPI):
     # Shutdown -- nothing to clean up yet
 
 
+@app.post("/api/shutdown")
+async def shutdown():
+    """Gracefully shut down the server process."""
+    logger.info("Shutdown requested via API")
+
+    async def _delayed_exit():
+        await asyncio.sleep(0.5)
+        import os
+        import signal as sig_module
+        os.kill(os.getpid(), sig_module.SIGINT)
+
+    asyncio.create_task(_delayed_exit())
+    return {"status": "shutting_down"}
+
+
 def _serve_frontend() -> None:
     """Mount React frontend static files if present."""
     if FRONTEND_DIR.is_dir():

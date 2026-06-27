@@ -1,5 +1,32 @@
 import { motion } from "motion/react";
+import { useState } from "react";
+import { Power } from "lucide-react";
 import PDFConverterBox from "./components/PDFConverterBox";
+
+function ShutdownButton() {
+  const [shutting, setShutting] = useState(false);
+
+  const handleShutdown = async () => {
+    setShutting(true);
+    try {
+      await fetch("/api/shutdown", { method: "POST" });
+    } catch {
+      // Server may close before responding
+    }
+  };
+
+  return (
+    <button
+      onClick={handleShutdown}
+      disabled={shutting}
+      className="fixed top-4 right-4 z-[10000] flex items-center gap-1.5 px-3 py-1.5 rounded-full glass text-zinc-400 hover:text-red-400 hover:border-red-500/30 text-xs transition-colors duration-200 disabled:opacity-50"
+      title={shutting ? "Shutting down..." : "Exit application"}
+    >
+      <Power className="w-3.5 h-3.5" />
+      {shutting ? "Closing..." : "Exit"}
+    </button>
+  );
+}
 
 const FEATURES = [
   {
@@ -14,6 +41,7 @@ const FEATURES = [
 export default function App() {
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
+      <ShutdownButton />
       <header className="mb-12 mt-8 text-center">
         <motion.h1
           className="text-5xl md:text-7xl font-black tracking-tighter text-gradient"
