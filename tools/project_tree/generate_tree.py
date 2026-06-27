@@ -68,11 +68,9 @@ def find_project_root(start_path: Path) -> Path:
 
 def load_gitignore_patterns(root_path: Path) -> List[str]:
     """
-    Reads the .gitignore file from the project root and returns a list of patterns.
-    
-    It handles comments (lines starting with #) and empty lines.
-    It automatically adds '.git' to the patterns to prevent internal git 
-    metadata from cluttering the documentation.
+    Reads .gitignore files from the project root and subdirectories, returning
+    a list of glob patterns. Patterns from nested .gitignore files are prefixed
+    with their relative directory so they match correctly against relative paths.
 
     Args:
         root_path (Path): The absolute path to the project root.
@@ -81,19 +79,36 @@ def load_gitignore_patterns(root_path: Path) -> List[str]:
         List[str]: A list of glob patterns to ignore.
     """
     gitignore_path = root_path / ".gitignore"
-    patterns = ['.git'] # Always ignore the .git metadata folder
+    patterns = ['.git']  # Always ignore the .git metadata folder
 
-    if gitignore_path.exists():
+    # Helper to read patterns from a single .gitignore file
+    def _read_gitignore(filepath: Path) -> List[str]:
+        result = []
         try:
-            with open(gitignore_path, "r", encoding="utf-8") as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
-                    # Skip comments and empty lines
                     if line and not line.startswith("#"):
-                        patterns.append(line)
+                        result.append(line)
         except Exception as e:
-            print(f"[WARN] Could not read .gitignore: {e}")
-    
+            print(f"[WARN] Could not read {filepath}: {e}")
+        return result
+
+    # 1. Read root .gitignore
+    if gitignore_path.exists():
+        patterns.extend(_read_gitignore(gitignore_path))
+
+    # 2. Read nested .gitignore files, prefixing patterns with relative dir
+    for dirpath, dirnames, filenames in os.walk(root_path):
+        # Skip .git and node_modules to avoid performance issues
+        dirnames[:] = [d for d in dirnames if d != '.git' and d != 'node_modules']
+
+        if '.gitignore' in filenames and dirpath != str(root_path):
+            rel_dir = Path(dirpath).relative_to(root_path).as_posix()
+            nested_patterns = _read_gitignore(Path(dirpath) / '.gitignore')
+            for p in nested_patterns:
+                patterns.append(f"{rel_dir}/{p}")
+
     return patterns
 
 def is_ignored(path: Path, patterns: List[str], root_path: Path) -> bool:
@@ -119,25 +134,6 @@ def is_ignored(path: Path, patterns: List[str], root_path: Path) -> bool:
         # Match against filename (e.g., *.log) OR relative path (e.g., logs/*.txt)
         if fnmatch.fnmatch(name, clean_pattern) or fnmatch.fnmatch(rel_path, clean_pattern):
             return True
-    return False
-    """
-    Checks if a file or directory name matches any of the gitignore patterns.
-    
-    Args:
-        name (str): The file or directory name.
-        patterns (List[str]): List of patterns to check against.
-
-    Returns:
-        bool: True if the item should be ignored, False otherwise.
-    """
-    for pattern in patterns:
-        # Normalize pattern: remove leading/trailing slashes for simple matching
-        clean_pattern = pattern.rstrip('/')
-        
-        # Check if name matches the pattern (using unix filename matching)
-        if fnmatch.fnmatch(name, clean_pattern):
-            return True
-            
     return False
 
 def generate_tree_structure(current_path: Path, patterns: List[str], root_path: Path, 
@@ -178,48 +174,6 @@ def generate_tree_structure(current_path: Path, patterns: List[str], root_path: 
             )
 
     return output_string
-
-
-    """
-    Main entry point of the script.
-
-    1. Detects the project root.
-    2. Loads .gitignore patterns.
-    3. Generates the tree string.
-    4. Writes the final content to the specified Markdown file.
-    """
-    # 1. Determine Project Root automatically
-    script_location = Path(__file__).resolve()
-    project_root = script_location.parent.parent
-    
-    print(f"[INFO] Project Root detected at: {project_root}")
-
-    # 2. Load Ignore Patterns
-    patterns = load_gitignore_patterns(project_root)
-    print(f"[INFO] Loaded {len(patterns)} ignore patterns from .gitignore (including defaults).")
-
-    # 3. Generate the Tree String
-    tree_body = generate_tree_structure(project_root, patterns)
-    
-    # 4. Construct the Final Markdown Content
-    final_content = (
-        "```\n"
-        f"{project_root.name}/\n"
-        f"{tree_body}"
-        "```\n"
-    )
-
-    # 5. Define Output Path and Create Directory if needed
-    output_file = project_root / OUTPUT_REL_PATH
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-
-    # 6. Write File
-    try:
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(final_content)
-        print(f"[SUCCESS] Tree generated successfully at: {output_file}")
-    except Exception as e:
-        print(f"[ERROR] Failed to write file: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Project Directory Tree")
