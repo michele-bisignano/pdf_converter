@@ -3,39 +3,58 @@ FastAPI server for pdf_converter.
 Exposes REST endpoints for PDF-to-Excel conversion.
 """
 
-import os
+import asyncio
 import uuid
-import shutil
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
+
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import logging
 
 from src.backend.pdf_to_exel_converter import pdf_to_excel_converter_main
 
 logger = logging.getLogger("pdf_converter.api")
 
-app = FastAPI(title="pdf_converter", version="1.0.0")
 
-# CORS per sviluppo frontend (React su altra porta)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# -- Response models ----------------------------------------------------------
 
-# ── Cartelle ──────────────────────────────────────────────────────────────────
+class HealthResponse(BaseModel):
+    status: str
+
+
+class ConvertResponse(BaseModel):
+    success: bool
+    file_path: str
+    file_name: str
+    warning: bool = False
+    warning_message: str = ""
+    validation: Any = None
+    row_count: int = 0
+
+
+# -- Paths --------------------------------------------------------------------
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
 FRONTEND_DIR = BASE_DIR / "src" / "frontend" / "dist"
 TEMP_DIR = BASE_DIR / "temp"
 
-OUTPUT_DIR.mkdir(exist_ok=True)
-TEMP_DIR.mkdir(exist_ok=True)
+
+# -- Lifespan -----------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown lifecycle."""
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    TEMP_DIR.mkdir(exist_ok=True)
+    _serve_frontend()
+    yield
+    # Shutdown -- nothing to clean up yet
 
 
 def _serve_frontend() -> None:
@@ -69,16 +88,44 @@ def _serve_frontend() -> None:
             """)
 
 
-# ── Endpoint API ──────────────────────────────────────────────────────────────
+# -- App ----------------------------------------------------------------------
+
+app = FastAPI(
+    title="pdf_converter",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS per sviluppo frontend (React su altra porta).
+# Nota: Niente allow_credentials=True con allow_origins=["*"]: i browser
+# lo bloccano per specifica Fetch. Se servono credenziali, elencare le origini.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include update router (se presente)
+try:
+    from src.backend.update_router import router as update_router
+
+    app.include_router(update_router)
+    logger.info("Update router montato")
+except ImportError:
+    logger.info("Update router non disponibile")
 
 
-@app.get("/api/health")
+# -- Endpoint API -------------------------------------------------------------
+
+@app.get("/api/health", response_model=HealthResponse)
 async def health():
     """Health check endpoint."""
-    return {"status": "ok"}
+    return HealthResponse(status="ok")
 
 
-@app.post("/api/convert")
+@app.post("/api/convert", response_model=ConvertResponse)
 async def convert_pdf(
     file: UploadFile = File(...),
     output_path: str = Form(None),
@@ -89,16 +136,14 @@ async def convert_pdf(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Il file deve essere un PDF.")
 
-    # Salva il PDF caricato in temp
     temp_id = uuid.uuid4().hex
     pdf_path = TEMP_DIR / f"{temp_id}.pdf"
     try:
-        with open(pdf_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
+        content = await file.read()
+        pdf_path.write_bytes(content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore salvataggio file: {e}")
 
-    # Determina percorso output
     if output_path:
         out = Path(output_path)
     else:
@@ -108,10 +153,10 @@ async def convert_pdf(
     out.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        conv_result = pdf_to_excel_converter_main(str(pdf_path), str(out))
+        conv_result = await asyncio.to_thread(
+            pdf_to_excel_converter_main, str(pdf_path), str(out)
+        )
     except Exception as e:
-        if pdf_path.exists():
-            pdf_path.unlink()
         raise HTTPException(
             status_code=500, detail=f"Errore conversione: {e}"
         )
@@ -119,29 +164,29 @@ async def convert_pdf(
         if pdf_path.exists():
             pdf_path.unlink()
 
-    return {
-        "success": True,
-        "file_path": str(out),
-        "file_name": out.name,
-        "warning": conv_result.get("warning", False),
-        "warning_message": conv_result.get("warning_message", ""),
-        "validation": conv_result.get("validation"),
-        "row_count": conv_result.get("row_count", 0),
-    }
+    return ConvertResponse(
+        success=True,
+        file_path=str(out),
+        file_name=out.name,
+        warning=conv_result.get("warning", False),
+        warning_message=conv_result.get("warning_message", ""),
+        validation=conv_result.get("validation"),
+        row_count=conv_result.get("row_count", 0),
+    )
 
 
 @app.get("/api/download/{filename:path}")
 async def download_file(filename: str):
     """Scarica un file Excel generato."""
-    file_path = OUTPUT_DIR / filename
-    if not file_path.exists() or not file_path.is_file():
+    resolved = (OUTPUT_DIR / filename).resolve()
+    if not str(resolved).startswith(str(OUTPUT_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Percorso non consentito.")
+
+    if not resolved.exists() or not resolved.is_file():
         raise HTTPException(status_code=404, detail="File non trovato.")
+
     return FileResponse(
-        path=str(file_path),
+        path=str(resolved),
         filename=filename,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-
-
-# ── Inizializzazione ──────────────────────────────────────────────────────────
-_serve_frontend()
