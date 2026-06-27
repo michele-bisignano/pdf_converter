@@ -46,7 +46,15 @@ def filter_table_by_descrizione(table, header):
 
 def filter_table_by_header_length(table, header):
     header_length = len(header)
-    return [row for row in table if len(row) == header_length]
+    result = []
+    for row in table:
+        if len(row) == header_length:
+            result.append(row)
+        elif len(row) < header_length:
+            # Pad short rows (e.g. saldo rows) to match header length
+            result.append(row + [''] * (header_length - len(row)))
+        # Drop rows longer than header (malformed)
+    return result
 
 
 def fix_line_breaks(table, header):
