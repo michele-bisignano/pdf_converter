@@ -3,28 +3,35 @@ Auto-update module for pdf_converter (Windows PyInstaller).
 
 Architecture
 ------------
-Versions are distributed via GitHub Releases. Each release contains:
-  - pdf_converter.exe  (the new binary)
-  - manifest.json      (version metadata + checksum)
+Versions are distributed via Google Drive. Each release consists of:
+  - pdf_converter.exe  (the new binary, uploaded as a new Drive version)
+  - version.json       (version metadata + checksum, stored on Drive)
 
 On startup (--check-update) the module:
-  1. Fetches manifest.json from the latest GitHub Release
+  1. Fetches version.json from Google Drive
   2. Compares versions
   3. If a newer version exists → downloads the .exe to %TEMP%
   4. Launches update.bat that waits for this process to exit,
      replaces the .exe, and restarts the app
 
-Manifest JSON schema
---------------------
-{
-  "version": "1.1.0",
-  "release_date": "2026-06-27",
-  "url": "https://github.com/BisyB/pdf_converter/releases/download/v1.1.0/pdf_converter.exe",
-  "checksum": "sha256 hex string",
-  "checksum_type": "sha256",
-  "release_notes": "Bug fixes and improvements",
-  "mandatory": false
-}
+Drive setup
+-----------
+Upload files to Google Drive, share as "Anyone with the link → Viewer",
+and build a version.json with the Drive file IDs:
+
+  {
+    "version": "2.0.0",
+    "url": "https://drive.google.com/uc?export=download&id=FILE_ID_EXE&confirm=t",
+    "checksum": "sha256 hex string",
+    "checksum_type": "sha256",
+    "release_date": "2026-06-27",
+    "release_notes": "Bug fixes and improvements",
+    "mandatory": false
+  }
+
+Set VERSION_JSON_URL below to the Drive download link of that version.json.
+The env var PDF_CONVERTER_UPDATE_URL or the --update-manifest-url CLI flag
+can override it at runtime.
 """
 
 from __future__ import annotations
@@ -46,7 +53,7 @@ logger = logging.getLogger("pdf_converter.updater")
 # ── Defaults ───────────────────────────────────────────────────────────────────
 
 DEFAULT_MANIFEST_URL = (
-    "https://github.com/BisyB/pdf_converter/releases/latest/download/manifest.json"
+    "https://drive.google.com/uc?export=download&id=YOUR_VERSION_JSON_ID&confirm=t"
 )
 
 ENV_MANIFEST_URL = "PDF_CONVERTER_UPDATE_URL"

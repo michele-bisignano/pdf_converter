@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 # ============================================================================
-# auto-update.sh - Genera manifest.json per auto-update di pdf_converter
+# auto-update.sh - Genera version.json per auto-update di pdf_converter
 #
 # Utilizzo:
 #   ./scripts/auto-update.sh <versione> <percorso_exe>
 #
 # Esempio:
-#   ./scripts/auto-update.sh v1.1.0 dist/pdf_converter.exe
+#   ./scripts/auto-update.sh 2.0.1 dist/pdf_converter.exe
 #
 # Cosa fa:
 #   1. Calcola SHA256 del .exe fornito
-#   2. Genera manifest.json con versione, checksum e URL di download
-#   3. Il file generato va caricato come asset sulla GitHub Release
+#   2. Genera version.json con versione, checksum e URL Drive
+#   3. Il file generato va caricato su Google Drive
 #
-# Output: manifest.json (nella directory corrente)
+# Output: version.json (nella directory corrente)
+#
+# Workflow Drive:
+#   1. ./scripts/auto-update.sh 2.0.1 dist/pdf_converter.exe
+#   2. Carica pdf_converter.exe su Drive (Gestisci versioni → Carica nuova versione)
+#   3. Copia l'ID del file .exe e aggiorna version.json con l'ID corretto
+#   4. Aggiorna version.json su Drive (sovrascrivi, l'ID non cambia)
 # ============================================================================
 
 set -euo pipefail
@@ -25,15 +31,14 @@ usage() {
 Uso: $0 <versione> <percorso_exe>
 
 Argomenti:
-  versione      Tag della release (es. v1.1.0)
+  versione      Versione (es. 2.0.1)
   percorso_exe  Path del file .exe da pubblicare
 
 Esempio:
-  $0 v1.1.0 dist/pdf_converter.exe
+  $0 2.0.1 dist/pdf_converter.exe
 
-Variabili d'ambiente:
-  GITHUB_REPO   Repository GitHub (default: BisyB/pdf_converter)
-                Usato per generare l'URL di download nel manifest.
+Variabili d'ambiente (opzionali):
+  DRIVE_EXE_ID  ID del file .exe su Google Drive (default: FILE_ID_EXE)
 EOF
     exit 1
 }
@@ -46,15 +51,13 @@ fi
 
 VERSION="$1"
 EXE_PATH="$2"
-GITHUB_REPO="${GITHUB_REPO:-BisyB/pdf_converter}"
+DRIVE_EXE_ID="${DRIVE_EXE_ID:-FILE_ID_EXE}"
 
 # Validazioni
 if [[ ! -f "$EXE_PATH" ]]; then
     echo "ERRORE: File non trovato: $EXE_PATH" >&2
     exit 1
 fi
-
-VERSION_NUM="${VERSION#v}"  # rimuovi eventuale prefisso 'v'
 
 # ── Calcolo checksum ──────────────────────────────────────────────────────────
 
@@ -73,13 +76,13 @@ fi
 
 RELEASE_DATE=$(date -u +%Y-%m-%d)
 
-# ── Generazione manifest.json ─────────────────────────────────────────────────
+# ── Generazione version.json ──────────────────────────────────────────────────
 
-cat > manifest.json <<EOF
+cat > version.json <<EOF
 {
-  "version": "${VERSION_NUM}",
+  "version": "${VERSION}",
   "release_date": "${RELEASE_DATE}",
-  "url": "https://github.com/${GITHUB_REPO}/releases/download/${VERSION}/pdf_converter.exe",
+  "url": "https://drive.google.com/uc?export=download&id=${DRIVE_EXE_ID}&confirm=t",
   "checksum": "${CHECKSUM}",
   "checksum_type": "sha256",
   "release_notes": "",
@@ -92,20 +95,20 @@ EOF
 cat <<EOF
 
 ============================================
-  manifest.json generato con successo
+  version.json generato con successo
 ============================================
 
-  Versione:      ${VERSION_NUM}
+  Versione:      ${VERSION}
   Checksum:      ${CHECKSUM:0:16}...
   Release date:  ${RELEASE_DATE}
-  URL:           https://github.com/${GITHUB_REPO}/releases/download/${VERSION}/pdf_converter.exe
+  URL Drive:     https://drive.google.com/uc?export=download&id=${DRIVE_EXE_ID}&confirm=t
 
-File creato: manifest.json
+File creato: version.json
 
 Prossimi passi:
-  1. Crea una GitHub Release con tag ${VERSION}
-  2. Carica pdf_converter.exe come asset
-  3. Carica manifest.json come asset
-  4. L'app trovera' l'aggiornamento automaticamente
+  1. Carica pdf_converter.exe su Google Drive (stesso file, ID invariato)
+  2. Apri version.json → sostituisci DRIVE_EXE_ID con l'ID reale del file
+  3. Carica version.json su Google Drive (sovrascrivi il precedente)
+  4. Aggiorna DEFAULT_MANIFEST_URL in src/backend/updater.py con l'ID del version.json
 
 EOF

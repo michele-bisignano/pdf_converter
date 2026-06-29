@@ -1,6 +1,14 @@
 import os
 import re
 
+# ── Build-time override ─────────────────────────────────────────────────────
+# Set this to your Mistral API key before running PyInstaller.
+# The key is embedded in the .exe (visible via decompilation — tradeoff accepted).
+# In development, the MISTRAL_API_KEY env var takes precedence.
+_BUILD_API_KEY: str = ""
+
+# ── Public API ──────────────────────────────────────────────────────────────
+
 
 def extract_tables_mistral(input_path: str) -> list[str]:
     """
@@ -10,9 +18,9 @@ def extract_tables_mistral(input_path: str) -> list[str]:
     Tables are extracted from page.markdown via regex since the v2 OCR
     response no longer populates a structured .tables attribute.
 
-    Requires the MISTRAL_API_KEY environment variable.
+    API key resolution: MISTRAL_API_KEY env var > _BUILD_API_KEY > skip.
     """
-    api_key = os.environ.get("MISTRAL_API_KEY")
+    api_key = os.environ.get("MISTRAL_API_KEY") or _BUILD_API_KEY
     if not api_key:
         print("\n\tMISTRAL_API_KEY not set -- skipping OCR\n")
         return []
