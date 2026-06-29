@@ -15,30 +15,6 @@ from .processing import (
     RIEPILOGO_KEYWORDS,
 )
 
-
-def _safe_output_path(original_path: str) -> str:
-    """Return a writable path. If original is locked, append _1, _2, etc."""
-    if not os.path.exists(original_path):
-        return original_path
-    try:
-        with open(original_path, "a"):
-            os.utime(original_path, None)
-        return original_path
-    except PermissionError:
-        base, ext = os.path.splitext(original_path)
-        for i in range(1, 100):
-            candidate = f"{base}_{i}{ext}"
-            if not os.path.exists(candidate):
-                return candidate
-            try:
-                with open(candidate, "a"):
-                    os.utime(candidate, None)
-                return candidate
-            except PermissionError:
-                continue
-        return original_path
-
-
 def _safe_output_path(original_path: str) -> str:
     """Return a writable path. If original is locked, append _1, _2, etc."""
     if not os.path.exists(original_path):
@@ -165,7 +141,19 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
         result["warning_message"] = validation["messaggio"]
         print("\n\t" + validation["messaggio"])
 
-    # ---- Phase 7: write to Excel ----
+    # ---- Phase 7: remove the computed "totali" row before writing to Excel ----
+    # La riga "totali" è ottenuta sommando addebiti e accrediti dal software
+    # e non va salvata nell'estratto conto. Le righe "saldo iniziale" e
+    # "saldo finale" fornite dalla banca vanno invece mantenute.
+    if 'Descrizione' in export_df.columns:
+        totali_mask = export_df['Descrizione'].astype(str).str.lower().str.contains('totali', na=False)
+        export_df = export_df[~totali_mask].copy()
+
+    if export_df.empty:
+        print("	No transactions after removing the totali row.")
+        return result
+
+    # ---- Phase 8: write to Excel ----
     output_path = _safe_output_path(output_path)
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         export_df.to_excel(writer, index=False, sheet_name="Movimenti")
