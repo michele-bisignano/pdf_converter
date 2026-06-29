@@ -66,7 +66,12 @@ def extract_tables_mistral(input_path: str) -> list[str]:
         score = scores.average_page_confidence_score if scores else None
         if score is not None and score < 0.80:
             print(f"\t[warn] page {page.index}: low confidence score ({score:.2f})")
-        tables = re.findall(r"<table>.*?</table>", page.markdown, re.DOTALL | re.IGNORECASE)
+        # Match <table> with or without attributes (e.g. <table border="1">)
+        tables = re.findall(r"<table[^>]*>.*?</table>", page.markdown, re.DOTALL | re.IGNORECASE)
+        if not tables:
+            # Debug: show a snippet of the markdown to help diagnose missing tables
+            snippet = page.markdown[:300].replace("\n", " ") if page.markdown else "<empty>"
+            print(f"\t[debug] page {page.index}: no <table> found. Markdown snippet: {snippet!r}")
         html_tables.extend(tables)
 
     return html_tables

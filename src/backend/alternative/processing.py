@@ -67,7 +67,9 @@ def _is_credit(desc: str) -> bool:
 
 def parse_html_table(html: str) -> pd.DataFrame:
     """Parse a single HTML table string into a DataFrame with flat column names."""
-    dfs = pd.read_html(StringIO(html), flavor="lxml")
+    # Prepend UTF-8 charset so lxml/html5lib correctly decode accented characters
+    html_utf8 = f'<meta charset="utf-8">{html}'
+    dfs = pd.read_html(StringIO(html_utf8), flavor="lxml")
     if not dfs:
         return None
     df = dfs[0]

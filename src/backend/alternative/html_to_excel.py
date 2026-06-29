@@ -39,6 +39,29 @@ def _safe_output_path(original_path: str) -> str:
         return original_path
 
 
+def _safe_output_path(original_path: str) -> str:
+    """Return a writable path. If original is locked, append _1, _2, etc."""
+    if not os.path.exists(original_path):
+        return original_path
+    try:
+        with open(original_path, "a"):
+            os.utime(original_path, None)
+        return original_path
+    except PermissionError:
+        base, ext = os.path.splitext(original_path)
+        for i in range(1, 100):
+            candidate = f"{base}_{i}{ext}"
+            if not os.path.exists(candidate):
+                return candidate
+            try:
+                with open(candidate, "a"):
+                    os.utime(candidate, None)
+                return candidate
+            except PermissionError:
+                continue
+        return original_path
+
+
 def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
     """
     Classify Mistral HTML tables, keep only transaction data,
@@ -91,6 +114,26 @@ def html_tables_to_excel(html_tables: list[str], output_path: str) -> dict:
 
     if not all_frames:
         print("	No transaction tables found among OCR results.")
+        # Fallback: save raw OCR tables so the user can inspect them
+        raw_frames = []
+        for html in html_tables:
+            df = parse_html_table(html)
+            if df is not None and not df.empty:
+                raw_frames.append(df)
+
+        if raw_frames:
+            safe_path = _safe_output_path(output_path)
+            with pd.ExcelWriter(safe_path, engine="openpyxl") as writer:
+                for i, df in enumerate(raw_frames):
+                    sheet_name = f"OCR_Tabella_{i + 1}"[:31]
+                    df.to_excel(writer, index=False, sheet_name=sheet_name)
+            result["success"] = True
+            result["warning"] = True
+            result["warning_message"] = (
+                "Tabelle OCR salvate senza classificazione: nessuna colonna "
+                "transazione riconosciuta. Verificare manualmente il file."
+            )
+            print(f"	Fallback: saved {len(raw_frames)} raw OCR table(s) -> {safe_path}")
         return result
 
     combined = pd.concat(all_frames, ignore_index=True)
