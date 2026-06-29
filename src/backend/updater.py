@@ -50,6 +50,13 @@ from urllib.request import Request, urlopen
 
 logger = logging.getLogger("pdf_converter.updater")
 
+# ── Build-time override ───────────────────────────────────────────────────────
+# Set this to the real manifest URL before running PyInstaller.
+# The URL is embedded in the .exe (visible via decompilation — tradeoff accepted).
+# In development, the PDF_CONVERTER_UPDATE_URL env var or --update-manifest-url
+# flag take precedence.
+_BUILD_MANIFEST_URL: str = ""
+
 # ── Defaults ───────────────────────────────────────────────────────────────────
 
 DEFAULT_MANIFEST_URL = (
@@ -101,12 +108,14 @@ def _is_newer(remote: str, current: str) -> bool:
 
 
 def _resolve_manifest_url(cli_url: Optional[str] = None) -> str:
-    """Resolve the manifest URL: CLI arg > env var > default."""
+    """Resolve the manifest URL: CLI arg > env var > build-time > default."""
     if cli_url:
         return cli_url
     env_url = os.environ.get(ENV_MANIFEST_URL)
     if env_url:
         return env_url
+    if _BUILD_MANIFEST_URL:
+        return _BUILD_MANIFEST_URL
     return DEFAULT_MANIFEST_URL
 
 
