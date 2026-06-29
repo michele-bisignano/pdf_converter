@@ -1,5 +1,8 @@
 # PDF to Excel Converter
 
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+[![Changelog](CHANGELOG.md)](CHANGELOG.md)
+
 Converte automaticamente tabelle da file PDF in fogli Excel, con doppia modalità: web (consigliata) e CLI.
 
 ---
