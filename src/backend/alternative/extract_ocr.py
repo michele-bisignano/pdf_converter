@@ -1,5 +1,4 @@
 import os
-import re
 
 # ── Build-time override ─────────────────────────────────────────────────────
 # Set this to your Mistral API key before running PyInstaller.
@@ -15,8 +14,8 @@ def extract_tables_mistral(input_path: str) -> list[str]:
     Sends the PDF to Mistral OCR and returns a list of HTML table strings.
 
     Uses the Mistral SDK (from mistralai.client import Mistral).
-    Tables are extracted from page.markdown via regex since the v2 OCR
-    response no longer populates a structured .tables attribute.
+    With table_format="html" the tables are extracted from page.tables,
+    each containing an HTML attribute with the formatted table markup.
 
     API key resolution: MISTRAL_API_KEY env var > _BUILD_API_KEY > skip.
     """
@@ -66,12 +65,16 @@ def extract_tables_mistral(input_path: str) -> list[str]:
         score = scores.average_page_confidence_score if scores else None
         if score is not None and score < 0.80:
             print(f"\t[warn] page {page.index}: low confidence score ({score:.2f})")
-        # Match <table> with or without attributes (e.g. <table border="1">)
-        tables = re.findall(r"<table[^>]*>.*?</table>", page.markdown, re.DOTALL | re.IGNORECASE)
-        if not tables:
-            # Debug: show a snippet of the markdown to help diagnose missing tables
+
+        # Con table_format="html" le tabelle stanno in page.tables, NON in page.markdown
+        if page.tables:
+            for table in page.tables:
+                # SDK v2.x: l'attributo HTML è 'html' o 'content'
+                html_content = getattr(table, 'html', None) or getattr(table, 'content', None)
+                if html_content:
+                    html_tables.append(html_content)
+        else:
             snippet = page.markdown[:300].replace("\n", " ") if page.markdown else "<empty>"
-            print(f"\t[debug] page {page.index}: no <table> found. Markdown snippet: {snippet!r}")
-        html_tables.extend(tables)
+            print(f"\t[debug] page {page.index}: no tables. Snippet: {snippet!r}")
 
     return html_tables
