@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, FileText, Loader2, Download, AlertTriangle } from "lucide-react";
+import { Upload, FileText, Loader2, Download, AlertTriangle, CheckCircle } from "lucide-react";
 import { convertPdf, downloadFile } from "../services/api";
 
 /**
@@ -33,7 +33,6 @@ async function saveBlobAs(blob, fileName) {
   }
 
   // Fallback: trigger download via a hidden <a> element.
-  // The browser saves to its default download folder without asking.
   const url = URL.createObjectURL(blob);
   try {
     const a = document.createElement("a");
@@ -65,6 +64,7 @@ export default function PDFConverterBox() {
   const [resultWarning, setResultWarning] = useState(null);
   const [blob, setBlob] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
 
@@ -85,6 +85,7 @@ export default function PDFConverterBox() {
     setResult(null);
     setResultWarning(null);
     setBlob(null);
+    setSaved(false);
   }, []);
 
   /**
@@ -124,6 +125,7 @@ export default function PDFConverterBox() {
     setResult(null);
     setResultWarning(null);
     setBlob(null);
+    setSaved(false);
 
     try {
       const data = await convertPdf(file);
@@ -133,9 +135,11 @@ export default function PDFConverterBox() {
         setResultWarning(data.warning_message || "Warning: the balance does not match.");
       }
 
-      // Pre-fetch the blob so the download is instant when the user clicks
-      const fileBlob = await downloadFile(data.file_name);
-      setBlob(fileBlob);
+      // Only try to download the blob if the file actually exists on the server
+      if (data.file_name) {
+        const fileBlob = await downloadFile(data.file_name);
+        setBlob(fileBlob);
+      }
     } catch (err) {
       setError(err.message || "Error during conversion");
     } finally {
@@ -151,6 +155,7 @@ export default function PDFConverterBox() {
     setDownloading(true);
     try {
       await saveBlobAs(blob, result.file_name);
+      setSaved(true);
     } finally {
       setDownloading(false);
     }
@@ -221,7 +226,7 @@ export default function PDFConverterBox() {
         </button>
       )}
 
-      {/* Error */}
+      {/* Error — only when we truly have no result */}
       {error && !result && (
         <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
           {error}
@@ -229,7 +234,15 @@ export default function PDFConverterBox() {
       )}
 
       {/* Success (no warning) */}
-      {result && !resultWarning && (
+      {result && !resultWarning && !result.success && (
+        <div className="text-amber-400 text-sm bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+          Conversion had errors — the file may be incomplete.
+          {result.warning_message && <div className="mt-1">{result.warning_message}</div>}
+        </div>
+      )}
+
+      {/* Success (no warning) */}
+      {result && !resultWarning && result.success && (
         <div className="text-green-400 text-sm bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-start gap-2">
           <FileText size={18} className="shrink-0 mt-0.5" />
           <span className="flex-1">PDF exported successfully.</span>
@@ -245,7 +258,7 @@ export default function PDFConverterBox() {
       )}
 
       {/* Download button — shown after conversion, whether success or warning */}
-      {result && blob && (
+      {result && blob && !saved && (
         <button
           onClick={handleDownload}
           disabled={downloading}
@@ -265,6 +278,21 @@ export default function PDFConverterBox() {
             </>
           )}
         </button>
+      )}
+
+      {/* Saved confirmation */}
+      {saved && (
+        <div className="text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex items-start gap-2">
+          <CheckCircle size={18} className="shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span>File saved successfully.</span>
+            {result?.file_path && (
+              <div className="text-zinc-500 text-xs mt-1">
+                Server copy: {result.file_path}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -245,17 +245,17 @@ async def convert_pdf(
             pdf_to_excel_converter_main, str(pdf_path), str(out)
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Conversion error: {e}"
-        )
+        logger.exception("Conversion failed (file may still exist on disk)")
+        conv_result = {"success": False, "warning": True, "warning_message": f"Conversion error: {e}"}
     finally:
         if pdf_path.exists():
             pdf_path.unlink()
 
+    file_exists = out.exists() and out.is_file()
     return ConvertResponse(
         success=conv_result.get("success", False),
-        file_path=str(out),
-        file_name=out.name,
+        file_path=str(out) if file_exists else "",
+        file_name=out.name if file_exists else "",
         warning=conv_result.get("warning", False),
         warning_message=conv_result.get("warning_message", ""),
         validation=conv_result.get("validation"),
