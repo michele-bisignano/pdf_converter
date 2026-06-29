@@ -81,7 +81,7 @@ class UpdateInfo:
 # ── Version helpers ────────────────────────────────────────────────────────────
 
 
-def _parse_version(ver: str) -> tuple[int, ...]:
+def _parse_version(ver: str) -> Tuple[int, ...]:
     """Parse '1.2.3' → (1, 2, 3) for comparison.
 
     Falls back to (0,) on malformed input so we never crash.
@@ -89,7 +89,7 @@ def _parse_version(ver: str) -> tuple[int, ...]:
     try:
         return tuple(int(x) for x in ver.strip().split("."))
     except (ValueError, AttributeError):
-        return (0,)
+        return (0,)  # type: ignore[return-value]
 
 
 def _is_newer(remote: str, current: str) -> bool:
@@ -100,7 +100,7 @@ def _is_newer(remote: str, current: str) -> bool:
 # ── Manifest fetching ──────────────────────────────────────────────────────────
 
 
-def _resolve_manifest_url(cli_url: str | None = None) -> str:
+def _resolve_manifest_url(cli_url: Optional[str] = None) -> str:
     """Resolve the manifest URL: CLI arg > env var > default."""
     if cli_url:
         return cli_url
@@ -110,7 +110,7 @@ def _resolve_manifest_url(cli_url: str | None = None) -> str:
     return DEFAULT_MANIFEST_URL
 
 
-def fetch_manifest(manifest_url: str) -> dict | None:
+def fetch_manifest(manifest_url: str) -> Optional[dict]:
     """Download and parse the remote manifest.json.
 
     Returns None on any network / parse error.
@@ -134,7 +134,7 @@ def fetch_manifest(manifest_url: str) -> dict | None:
 # ── Update check ───────────────────────────────────────────────────────────────
 
 
-def check_for_update(manifest_url: str | None = None) -> UpdateInfo | None:
+def check_for_update(manifest_url: Optional[str] = None) -> Optional[UpdateInfo]:
     """Check whether a newer version exists.
 
     Returns an ``UpdateInfo`` if one is available, or ``None``.
@@ -188,7 +188,7 @@ def _verify_checksum(file_path: Path, expected: str, algo: str = "sha256") -> bo
     return ok
 
 
-def download_update(update: UpdateInfo) -> Path | None:
+def download_update(update: UpdateInfo) -> Optional[Path]:
     """Download the new .exe to a temp directory.
 
     Returns the path to the downloaded file, or None on failure.
@@ -352,7 +352,7 @@ def apply_update(new_exe: Path) -> None:
 # ── Public entry point ─────────────────────────────────────────────────────────
 
 
-def check_and_apply(manifest_url: str | None = None) -> bool:
+def check_and_apply(manifest_url: Optional[str] = None) -> bool:
     """Convenience: check for an update, download, and apply.
 
     This is the main entry point called from ``main.py`` when the

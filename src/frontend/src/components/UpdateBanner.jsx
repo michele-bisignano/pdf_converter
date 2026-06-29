@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Auto-update banner.
@@ -23,6 +23,8 @@ export default function UpdateBanner() {
   const [updateInfo, setUpdateInfo] = useState(null); // { version: string }
   const [status, setStatus]         = useState("idle"); // idle | downloading | restarting
 
+  const pollRef = useRef(null);
+
   // Check for updates on mount
   useEffect(() => {
     fetch("/api/update/check")
@@ -31,6 +33,14 @@ export default function UpdateBanner() {
         if (data.available) setUpdateInfo({ version: data.version });
       })
       .catch(() => {}); // silent if server does not respond
+
+    // Cleanup polling interval on unmount
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
   }, []);
 
   const handleUpdate = async () => {
@@ -45,10 +55,13 @@ export default function UpdateBanner() {
     // Start polling /api/health every 2s
     // When the server is back up -> reload the page
     setStatus("restarting");
-    const poll = setInterval(() => {
+    pollRef.current = setInterval(() => {
       fetch("/api/health")
         .then(() => {
-          clearInterval(poll);
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
           window.location.reload();
         })
         .catch(() => {}); // still offline, retry
