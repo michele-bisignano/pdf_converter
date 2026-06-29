@@ -6,7 +6,7 @@ def extract_tables_mistral(input_path: str) -> list[str]:
     """
     Sends the PDF to Mistral OCR and returns a list of HTML table strings.
 
-    Uses the Mistral v2 API (from mistralai import Mistral).
+    Uses the Mistral SDK (from mistralai.client import Mistral).
     Tables are extracted from page.markdown via regex since the v2 OCR
     response no longer populates a structured .tables attribute.
 
@@ -17,7 +17,7 @@ def extract_tables_mistral(input_path: str) -> list[str]:
         print("\n\tMISTRAL_API_KEY not set -- skipping OCR\n")
         return []
 
-    from mistralai import Mistral
+    from mistralai.client import Mistral
 
     client = Mistral(api_key=api_key)
     uploaded = None
