@@ -1,48 +1,88 @@
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Power } from "lucide-react";
 import PDFConverterBox from "./components/PDFConverterBox";
 import UpdateBanner from "./components/UpdateBanner";
+import { sendHeartbeat, requestShutdown } from "./services/api";
+
+const HEARTBEAT_INTERVAL_MS = 5000;
 
 /**
- * Shutdown button that sends a POST request to the backend
- * to gracefully stop the server.
+ * Keeps the backend's watchdog informed that this tab is still open.
+ * Sends a heartbeat immediately and then on a fixed interval for as
+ * long as the component is mounted. If the tab closes (or the process
+ * is killed) the interval simply stops -- no cleanup call needed.
+ *
+ * @returns {null} Renders nothing; side-effect-only component
+ */
+function HeartbeatPulse() {
+  useEffect(() => {
+    sendHeartbeat();
+    const id = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  return null;
+}
+
+/**
+ * Shutdown button that asks the backend to gracefully stop the server.
+ *
+ * Uses navigator.sendBeacon (via requestShutdown) instead of fetch,
+ * since sendBeacon is guaranteed by the browser to be delivered even
+ * if the tab is closed immediately after. A short confirmation step
+ * avoids accidental clicks, and the button explains that the browser
+ * tab itself should be closed manually afterwards -- most browsers
+ * don't allow scripts to close tabs they didn't open themselves.
  *
  * @returns {JSX.Element} A floating button in the top-right corner
  */
 function ShutdownButton() {
-  const [shutting, setShutting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  const timeoutRef = useRef(null);
 
-  const handleShutdown = async () => {
-    setShutting(true);
-    try {
-      await fetch("/api/shutdown", { method: "POST" });
-    } catch {
-      // Server may close before responding
+  useEffect(() => () => clearTimeout(timeoutRef.current), []);
+
+  const handleClick = () => {
+    if (!confirming) {
+      setConfirming(true);
+      timeoutRef.current = setTimeout(() => setConfirming(false), 4000);
+      return;
     }
-    // Best-effort: try to close this browser tab/window
-    // (works only for programmatically-opened windows)
-    setTimeout(() => {
-      try { window.close(); } catch { /* not supported */ }
-    }, 2000);
+    clearTimeout(timeoutRef.current);
+    requestShutdown();
+    setStopped(true);
   };
 
   return (
     <motion.button
-      onClick={handleShutdown}
-      disabled={shutting}
-      className="fixed top-4 right-4 z-[10000] flex items-center gap-2 px-3 py-2
-        overflow-hidden rounded-full border border-white/10 bg-white/[0.03]
-        text-zinc-400 hover:text-red-400 text-xs transition-colors duration-300 disabled:opacity-50 group"
+      onClick={handleClick}
+      disabled={stopped}
+      className={`fixed top-4 right-4 z-[10000] flex items-center gap-2 px-3 py-2
+        overflow-hidden rounded-full border text-xs transition-colors duration-300
+        disabled:opacity-50 group ${
+          confirming
+            ? "border-red-500/40 bg-red-500/10 text-red-400"
+            : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-red-400"
+        }`}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      title={shutting ? "Closing..." : "Exit"}
+      title={
+        stopped
+          ? "Server stopped — you can close this tab"
+          : confirming
+            ? "Click again to confirm"
+            : "Stop server"
+      }
     >
       <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent
         opacity-0 transition-opacity duration-500 group-hover:opacity-100
         group-hover:animate-shimmer pointer-events-none" />
       <Power className="w-3.5 h-3.5 relative z-10" />
-      <span className="relative z-10">{shutting ? "Closing..." : "Exit"}</span>
+      <span className="relative z-10">
+        {stopped ? "You can close this tab" : confirming ? "Confirm?" : "Exit"}
+      </span>
     </motion.button>
   );
 }
@@ -68,6 +108,7 @@ const FEATURES = [
 export default function App() {
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
+      <HeartbeatPulse />
       <UpdateBanner />
       <ShutdownButton />
       <header className="mb-12 mt-8 text-center">

@@ -4,7 +4,10 @@ Exposes REST endpoints for PDF-to-Excel conversion.
 """
 
 import asyncio
+import os
+import platform
 import threading
+import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -46,6 +49,59 @@ FRONTEND_DIR = BASE_DIR / "src" / "frontend" / "dist"
 TEMP_DIR = BASE_DIR / "temp"
 
 
+# -- Watchdog (auto-shutdown on lost heartbeat) -------------------------------
+#
+# The frontend tab sends a heartbeat every HEARTBEAT_INTERVAL_S seconds while
+# it's open. If the browser is closed (or crashes) the heartbeat stops, and
+# this background thread kills the process after HEARTBEAT_TIMEOUT_S of
+# silence. This acts as a safety net for cases where the explicit
+# /api/shutdown call from the "Exit" button never arrives (e.g. the tab is
+# closed before the request is sent, or the request is cancelled mid-flight).
+HEARTBEAT_INTERVAL_S = 5
+HEARTBEAT_TIMEOUT_S = 20  # must be a few heartbeats wide to tolerate hiccups
+
+_last_heartbeat: float | None = None
+_watchdog_lock = threading.Lock()
+
+
+def _kill_process() -> None:
+    """Terminate the current process unconditionally.
+
+    On Windows, signal-based approaches (CTRL_BREAK_EVENT) can fail when
+    the process runs without a console (e.g. launched from a packaged
+    .exe or from Git Bash), so we go through the native kernel32 call
+    instead. On POSIX, os._exit bypasses cleanup handlers and guarantees
+    termination.
+    """
+    if platform.system() == "Windows":
+        import ctypes
+        ctypes.windll.kernel32.ExitProcess(0)
+    else:
+        os._exit(0)
+
+
+def _watchdog_loop() -> None:
+    """Background thread: auto-shutdown if heartbeats stop arriving.
+
+    Only starts counting once the first heartbeat is received, so a
+    frontend that's never opened (e.g. pure API usage) won't trigger
+    an unwanted shutdown.
+    """
+    while True:
+        time.sleep(HEARTBEAT_INTERVAL_S)
+        with _watchdog_lock:
+            last = _last_heartbeat
+        if last is None:
+            continue  # no client has connected yet
+        if time.time() - last > HEARTBEAT_TIMEOUT_S:
+            logger.warning(
+                "No heartbeat received for %.0fs; shutting down.",
+                time.time() - last,
+            )
+            _kill_process()
+            return
+
+
 # -- Lifespan -----------------------------------------------------------------
 
 @asynccontextmanager
@@ -54,6 +110,7 @@ async def lifespan(app: FastAPI):
     OUTPUT_DIR.mkdir(exist_ok=True)
     TEMP_DIR.mkdir(exist_ok=True)
     _serve_frontend()
+    threading.Thread(target=_watchdog_loop, daemon=True).start()
     yield
     # Shutdown -- nothing to clean up yet
 
@@ -126,30 +183,33 @@ async def health():
     return HealthResponse(status="ok")
 
 
+@app.post("/api/heartbeat")
+async def heartbeat():
+    """Record a liveness ping from an open frontend tab.
+
+    Called periodically by the frontend while the tab is open. If these
+    stop arriving (tab closed, browser crashed, network cut), the
+    watchdog thread shuts the server down automatically -- see
+    HEARTBEAT_TIMEOUT_S.
+    """
+    global _last_heartbeat
+    with _watchdog_lock:
+        _last_heartbeat = time.time()
+    return {"status": "ok"}
+
+
 @app.post("/api/shutdown")
 async def shutdown():
     """Shut down the server process.
 
-    Uses a threading.Timer to delay the kill so the HTTP response
-    can be sent first.  On Windows the kill goes through the native
-    kernel32.ExitProcess to ensure the process actually terminates
-    (signal-based approaches like CTRL_BREAK_EVENT fail when the
-    process runs without a console, e.g. from Git Bash).
+    Uses a threading.Timer to delay the kill so the HTTP response can
+    be sent first. This is the explicit/fast path triggered by the
+    "Exit" button; the heartbeat watchdog (see above) is the fallback
+    for when this request never arrives (e.g. tab closed before the
+    request could be sent or completed).
     """
     logger.info("Shutdown requested via API")
-
-    def _kill():
-        import os
-        import platform
-
-        if platform.system() == "Windows":
-            # Windows-native: ExitProcess kills the process unconditionally
-            import ctypes
-            ctypes.windll.kernel32.ExitProcess(0)
-        else:
-            os._exit(0)
-
-    threading.Timer(0.5, _kill).start()
+    threading.Timer(0.5, _kill_process).start()
     return {"status": "shutting_down"}
 
 

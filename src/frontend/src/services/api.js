@@ -44,3 +44,29 @@ export async function downloadFile(filename) {
   if (!res.ok) throw new Error("Download failed");
   return res.blob();
 }
+
+/**
+ * Sends a liveness ping to the backend. Called periodically while the
+ * app is open so the server's watchdog knows a client is still
+ * connected; if these stop arriving the server shuts itself down.
+ *
+ * @returns {void}
+ */
+export function sendHeartbeat() {
+  // Fire-and-forget: a missed heartbeat just means the watchdog
+  // triggers a little sooner, which is the desired fallback behavior.
+  navigator.sendBeacon(`${API_BASE}/heartbeat`);
+}
+
+/**
+ * Requests a graceful server shutdown.
+ *
+ * Uses navigator.sendBeacon instead of fetch: sendBeacon is guaranteed
+ * by the browser to be delivered even if the page is unloaded/closed
+ * immediately after the call, which a regular fetch() is not.
+ *
+ * @returns {void}
+ */
+export function requestShutdown() {
+  navigator.sendBeacon(`${API_BASE}/shutdown`);
+}
