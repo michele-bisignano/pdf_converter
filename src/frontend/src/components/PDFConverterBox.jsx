@@ -3,6 +3,52 @@ import { Upload, FileText, Loader2, Download, AlertTriangle } from "lucide-react
 import { convertPdf, downloadFile } from "../services/api";
 
 /**
+ * Attempts to save a Blob via the File System Access API (Chrome).
+ * Falls back to an <a>-tag download when the API is unavailable or the user cancels.
+ *
+ * @param {Blob} blob        - File contents
+ * @param {string} fileName  - Suggested file name
+ * @returns {Promise<boolean>} True if the file was saved successfully
+ */
+async function saveBlobAs(blob, fileName) {
+  // "Save As" via the File System Access API (Chromium only)
+  if ("showSaveFilePicker" in window) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [
+          {
+            description: "Excel File",
+            accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    } catch {
+      // User cancelled or the API threw — fall through to the <a>-tag fallback
+    }
+  }
+
+  // Fallback: trigger download via a hidden <a> element.
+  // The browser saves to its default download folder without asking.
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  return true;
+}
+
+/**
  * PDF-to-Excel converter component.
  *
  * Provides a drag-and-drop zone and a file picker for PDF upload,
@@ -17,6 +63,8 @@ export default function PDFConverterBox() {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [resultWarning, setResultWarning] = useState(null);
+  const [blob, setBlob] = useState(null);
+  const [downloading, setDownloading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
 
@@ -36,6 +84,7 @@ export default function PDFConverterBox() {
     setError(null);
     setResult(null);
     setResultWarning(null);
+    setBlob(null);
   }, []);
 
   /**
@@ -65,8 +114,8 @@ export default function PDFConverterBox() {
   const onDragLeave = () => setDragging(false);
 
   /**
-   * Uploads the selected PDF to the backend, receives the converted
-   * result, and triggers the download (native "Save As" or fallback).
+   * Uploads the selected PDF to the backend and stores the result.
+   * The user can then download the file manually via the download button.
    */
   const onUpload = async () => {
     if (!file) return;
@@ -74,6 +123,7 @@ export default function PDFConverterBox() {
     setError(null);
     setResult(null);
     setResultWarning(null);
+    setBlob(null);
 
     try {
       const data = await convertPdf(file);
@@ -83,44 +133,26 @@ export default function PDFConverterBox() {
         setResultWarning(data.warning_message || "Warning: the balance does not match.");
       }
 
-      const blob = await downloadFile(data.file_name);
-
-      // "Save As" via the File System Access API (Chrome)
-      let saved = false;
-      if ("showSaveFilePicker" in window) {
-        try {
-          const handle = await window.showSaveFilePicker({
-            suggestedName: data.file_name,
-            types: [
-              {
-                description: "Excel File",
-                accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] },
-              },
-            ],
-          });
-          const writable = await handle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-          saved = true;
-        } catch {
-          // User cancelled or error -> fallback
-        }
-      }
-
-      if (!saved) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = data.file_name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
+      // Pre-fetch the blob so the download is instant when the user clicks
+      const fileBlob = await downloadFile(data.file_name);
+      setBlob(fileBlob);
     } catch (err) {
       setError(err.message || "Error during conversion");
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Opens the "Save As" dialog and lets the user pick where to save.
+   */
+  const handleDownload = async () => {
+    if (!blob || !result) return;
+    setDownloading(true);
+    try {
+      await saveBlobAs(blob, result.file_name);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -200,7 +232,7 @@ export default function PDFConverterBox() {
       {result && !resultWarning && (
         <div className="text-green-400 text-sm bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-start gap-2">
           <FileText size={18} className="shrink-0 mt-0.5" />
-          <span>PDF exported successfully.</span>
+          <span className="flex-1">PDF exported successfully.</span>
         </div>
       )}
 
@@ -208,8 +240,31 @@ export default function PDFConverterBox() {
       {result && resultWarning && (
         <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 flex items-start gap-2">
           <AlertTriangle size={18} className="shrink-0 mt-0.5" />
-          <span>{resultWarning}</span>
+          <span className="flex-1">{resultWarning}</span>
         </div>
+      )}
+
+      {/* Download button — shown after conversion, whether success or warning */}
+      {result && blob && (
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full py-3 rounded-xl font-medium text-sm transition-all
+            bg-gradient-to-r from-emerald-500 to-teal-600
+            hover:opacity-90 disabled:opacity-50 text-white flex items-center justify-center gap-2"
+        >
+          {downloading ? (
+            <>
+              <Loader2 className="animate-spin" size={18} />
+              Preparing download...
+            </>
+          ) : (
+            <>
+              <Download size={18} />
+              Download Excel — Choose where to save
+            </>
+          )}
+        </button>
       )}
     </div>
   );
