@@ -1,9 +1,16 @@
 .vs/
 .vs/
-dekstop.ini
+desktop.ini
 __pycache__/
 *.pdf
 *.xlsx
 note.txt
 .env
 node_modules/
+output/
+temp/
+*.egg-info/
+dist/
+build/
+.ruff_cache/
+.pytest_cache/

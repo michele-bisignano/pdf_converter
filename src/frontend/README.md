@@ -1,16 +1,33 @@
-# React + Vite
+# pdf_converter — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Frontend React per pdf_converter. Si connette al backend FastAPI tramite `/api/`.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install          # Installa dipendenze
+npm run dev          # Dev server (porta 5173, proxy /api → localhost:8765)
+npm run build        # Build produzione in dist/
+npm run preview      # Server locale per testare la build
+```
 
-## React Compiler
+## Build per produzione
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm run build
+```
 
-## Expanding the Oxlint configuration
+Il contenuto di `dist/` viene servito staticamente dal backend FastAPI quando si lancia `python main.py` dalla root del progetto.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Struttura
+
+```
+src/
+├── App.jsx             → Root component (layout, heartbeat, shutdown)
+├── main.jsx            → Entry point
+├── components/
+│   ├── PDFConverterBox.jsx  → Upload PDF e download Excel
+│   └── UpdateBanner.jsx     → Banner aggiornamenti
+└── services/
+    └── api.js               → Chiamate API (convert, download, heartbeat)
+```

@@ -58,7 +58,7 @@ def install_hook():
         "echo \"[HOOK] Regenerating project tree...\"\n\n"
         
         "# 1. Run the generator\n"
-        "$PY_CMD s/project_tree/generate_tree.py\n\n"
+        "$PY_CMD tools/project_tree/generate_tree.py\n\n"
         
         "# 2. Add the generated file to the commit\n"
         "git add docs/project_structure/repository_tree.md\n"

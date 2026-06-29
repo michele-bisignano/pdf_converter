@@ -1,34 +1,27 @@
-# <PROJECT_NAME>
-
-<!--
-  Write file one project. Save root `CLAUDE.md`. Keep short.
-  File max 100 lines. Big file waste context.
-  Write core data here. Move extra details `memory/`.
--->
+# pdf_converter
 
 ## Stack
-<!-- Example: Python 3.12 + FastAPI + PostgreSQL. Or TypeScript + React + Vite -->
+- **Backend**: Python (FastAPI, pdfplumber, pandas, openpyxl, PyMuPDF, Mistral OCR fallback)
+- **Frontend**: React + Vite (motion/react, lucide-react)
+- **Build**: PyInstaller
 
 ## Commands
-- Build: `<command>`
-- Test: `<command>`
-- Lint/Format: `<command>`
-- Run local: `<command>`
+- Install backend: `pip install -r requirements.txt`
+- Install frontend: `cd src/frontend && npm install`
+- Build frontend: `cd src/frontend && npm run build`
+- Build exe: `pyinstaller build.spec`
+- Run web: `python main.py`
+- Run CLI: `python main.py --cli`
 
 ## Architecture
-<!--
-  Write max 3-5 lines. Give quick map.
-  Write deep detail `memory/architecture.md`.
--->
+- `main.py` — entry point (web o CLI)
+- `src/backend/server.py` — FastAPI server, watchdog heartbeat, CORS
+- `src/backend/updater.py` — auto-update via Google Drive
+- `src/frontend/src/` — React app
 
 ## Rules
-<!--
-  Example: Keep `legacy/` untouch. Use async/await.
-  Write test first. Ask add dependency.
--->
+- Non modificare file in `.claude/` senza autorizzazione
+- Update system uses Google Drive, not GitHub Releases
 
 ## Memory
 @.claude/wiki/hot.md
-
-Read `memory/INDEX.md` start hard task. Find target file.
-Stop read all memory. Read target file only.

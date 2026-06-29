@@ -1,53 +1,100 @@
-# 📄 PDF Table to Excel Converter 🚀
+# PDF to Excel Converter
 
-Easily transform your static PDF tables into dynamic Excel spreadsheets! Say goodbye to manual data entry and hello to automation! 😎
-
----
-
-## ❌ The Problem
-
-Working with PDF files can be frustrating when it comes to extracting table data:
-
-- 🔒 **Locked Data:** Tables inside PDFs aren’t easily accessible.
-- ⏳ **Time-Consuming:** Manually copying and pasting is slow and error-prone.
-- 😫 **Messy Output:** Formatting often gets lost during extraction.
+Converte automaticamente tabelle da file PDF in fogli Excel, con doppia modalità: web (consigliata) e CLI.
 
 ---
 
-## ✅ The Solution
+## Modalità d'uso
 
-Our app automates the entire conversion process, turning tables from a PDF file into a clean, structured Excel file with just a few clicks! 🎯
+### Web (consigliata)
 
-### 🔍 What It Does
+Avvia il server FastAPI + frontend React e apre automaticamente il browser:
 
-- 🤖 **Automatic Extraction:** Detects and extracts tables from your PDF files.
-- 📊 **Accurate Conversion:** Preserves table structure and data integrity.
-- ⏱ **Time-Saving:** Eliminates tedious manual work, freeing up your valuable time.
+```bash
+python main.py
+```
 
-### 📌 How It Works
+Opzioni:
+- `--port NUM` — porta personalizzata (default: 8765)
+- `--verbose` / `-v` — log dettagliati
+- `--check-update` — verifica aggiornamenti all'avvio
 
-This function is built to work with **standard table layouts** and a couple of **special cases** where tables have a unique structure.
+### CLI
 
-🛠 **Designed for Italian Users 🇮🇹**
-
-As per client request, the extracted table follows this specific column order:
-
-- **Column A:** Data 📅
-- **Column C:** Descrizione 📝
-- **Column F:** Dare / Entrate / Credito 💰
-- **Column G:** Avere / Uscite / Debito 💸
+```bash
+python main.py --cli
+```
 
 ---
 
-## 📂 Example Output
+## Setup
 
-🔹 [📄 View Sample PDF](https://github.com/BisyB/pdf_converter/blob/main/file_example/pdf%20mockup.pdf)  
-🔹 [📊 Open Sample Excel](https://github.com/BisyB/pdf_converter/blob/main/file_example/excel%20mockup.xlsx)
+### Backend
+```bash
+pip install -r requirements.txt
+```
 
-🚀 **Turn your PDFs into Excel files effortlessly!**
+### Frontend (sviluppo)
+```bash
+cd src/frontend
+npm install
+npm run build      # produce src/frontend/dist/
+```
+
+Per sviluppo frontend:
+```bash
+npm run dev        # Vite dev server (porta 5173)
+```
 
 ---
 
-💡 **Got feedback or suggestions? Let us know!** 💬
+## Build eseguibile
 
+```bash
+pip install pyinstaller
+pyinstaller build.spec
+```
 
+L'eseguibile sarà in `dist/pdf_converter.exe`.
+
+---
+
+## Colonna ordinata
+
+Per richiesta cliente italiano, l'output Excel segue quest'ordine:
+
+| Colonna | Contenuto |
+|---------|-----------|
+| A | Data |
+| C | Descrizione |
+| F | Dare / Entrate / Credito |
+| G | Avere / Uscite / Debito |
+
+---
+
+## API
+
+Con il server web avviato, la documentazione interattiva è disponibile su `http://localhost:8765/docs`.
+
+| Endpoint | Metodo | Descrizione |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/convert` | POST | Carica PDF → ricevi Excel |
+| `/api/download/{filename}` | GET | Scarica file convertito |
+| `/api/heartbeat` | POST | Ping liveness (frontend) |
+| `/api/shutdown` | POST | Ferma il server |
+| `/api/update/check` | GET | Verifica aggiornamenti |
+| `/api/update/apply` | POST | Applica aggiornamento |
+
+---
+
+## Banche testate
+
+Funzionanti: BCC, Banco BPM, Credit Agricole
+Non funzionante: Intesa Sanpaolo
+
+---
+
+## Licenza
+
+Apache 2.0. Vedi [LICENSE](LICENSE).

@@ -1,4 +1,23 @@
+# Project Tree Generator
+
+Genera e mantiene aggiornato il file `docs/project_structure/repository_tree.md` con la struttura ad albero del repository.
+
+## Utilizzo
+
+```bash
+python tools/project_tree/generate_tree.py
+```
+
+## Pre-commit Hook (opzionale)
+
+Installa un hook git che rigenera automaticamente il tree ad ogni commit:
+
+```bash
+python tools/project_tree/setup_hook.py
+```
+
 ## License
+
 Copyright 2026 Michele Bisignano & Mattia Franchini
 
 Licensed under the Apache License, Version 2.0 (the "License");
