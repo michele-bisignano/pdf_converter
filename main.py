@@ -16,6 +16,9 @@ import uvicorn
 import signal
 
 from src.backend.server import app
+from tools.updater.update_router import router as update_router
+
+app.include_router(update_router)
 
 logger = logging.getLogger("pdf_converter")
 
@@ -138,7 +141,7 @@ Examples:
 
     # -- Auto-update check --------------------------------------------------------
     if args.check_update:
-        from updater import check_for_update, do_update
+        from tools.updater.updater import check_for_update, do_update
 
         available, latest, release = check_for_update()
         if available:

@@ -161,15 +161,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include update router (if present)
-try:
-    from update_router import router as update_router
-
-    app.include_router(update_router)
-    logger.info("Update router mounted")
-except ImportError:
-    logger.info("Update router not available")
-
 
 # -- Endpoint API -------------------------------------------------------------
 

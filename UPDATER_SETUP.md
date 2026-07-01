@@ -3,8 +3,8 @@
 ## File da integrare nel progetto
 
 ```
-updater.py        → root del progetto
-update_router.py  → root del progetto
+tools/updater/updater.py   → tools/updater/
+tools/updater/update_router.py   → tools/updater/
 UpdateBanner.jsx  → src/components/ (o dove tieni i componenti)
 ```
 
@@ -24,7 +24,7 @@ requests
 Aggiungi queste 2 righe dopo aver creato l'istanza `app = FastAPI(...)`:
 
 ```python
-from update_router import router as update_router
+from tools.updater.update_router import router as update_router
 app.include_router(update_router)
 ```
 
@@ -79,14 +79,14 @@ Copia l'ID (la stringa tra `/d/` e `/view`).
 }
 ```
 ⚠️ **Non aggiungere `&confirm=t`** — per file grandi (praticamente ogni .exe)
-Drive richiede un token dinamico che cambia ad ogni richiesta. `updater.py`
+Drive richiede un token dinamico che cambia ad ogni richiesta. `tools/updater/updater.py`
 lo gestisce automaticamente: prima request, rileva la pagina di avviso,
 estrae il token, riprova. Un `confirm=t` statico nel JSON non serve e
 in alcuni casi può addirittura causare un token non valido.
 
 Carica version.json su Drive e copia il suo ID.
 
-### Configura updater.py:
+### Configura updater.py (in tools/updater/):
 ```python
 CURRENT_VERSION  = "2.0.0"
 VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_JSON"
@@ -99,7 +99,7 @@ VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_JSON"
 ```
 1. Modifica il codice
 
-2. Aggiorna CURRENT_VERSION in updater.py
+2. Aggiorna CURRENT_VERSION in tools/updater/updater.py
    es. "2.0.0" → "2.0.1"
 
 3. Build

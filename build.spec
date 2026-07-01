@@ -6,7 +6,7 @@ Build: pyinstaller build.spec
 Produce un singolo .exe in dist/pdf_converter.exe
 
 PRIMA DELLA BUILD:
-  - updater.py (root): imposta VERSION_JSON_URL con l'URL reale del version.json
+  - tools/updater/updater.py: imposta VERSION_JSON_URL con l'URL reale del version.json
   - src/backend/alternative/extract_ocr.py: imposta _BUILD_API_KEY con la Mistral API key
   (Le costanti _BUILD_* vengono embeddate nel .exe; nel repo sono vuote per non
    esporre credenziali. In dev si usano variabili d'ambiente o CLI flags.)
@@ -53,7 +53,9 @@ a = Analysis(
         'uvicorn.protocols.websockets',
         'uvicorn.protocols.websockets.auto',
         'uvicorn.middleware',
-        'updater',
+        'tools.updater',
+        'tools.updater.updater',
+        'tools.updater.update_router',
     ],
     hookspath=[],
     hooksconfig={},

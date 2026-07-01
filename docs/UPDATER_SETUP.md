@@ -3,8 +3,8 @@
 ## File coinvolti
 
 ```
-updater.py                     → Logica di aggiornamento
-update_router.py               → Endpoint API (/api/update/check, /api/update/apply)
+tools/updater/updater.py         → Logica di aggiornamento
+tools/updater/update_router.py   → Endpoint API (/api/update/check, /api/update/apply)
 src/frontend/src/components/UpdateBanner.jsx → Banner UI lato frontend
 ```
 
@@ -18,14 +18,11 @@ L'updater usa solo la stdlib Python (`urllib`, `hashlib`, `json`). Nessuna dipen
 
 ## 2. Integrazione main.py
 
-Già integrato: `server.py` include automaticamente `update_router.py` tramite import condizionale:
+Integrato in `main.py`:
 
 ```python
-try:
-    from update_router import router as update_router
-    app.include_router(update_router)
-except ImportError:
-    pass
+from tools.updater.update_router import router as update_router
+app.include_router(update_router)
 ```
 
 ---
@@ -65,13 +62,13 @@ Copia l'ID (la stringa tra `/d/` e `/view`).
 }
 ```
 ⚠️ **Non aggiungere `&confirm=t`** — per file grandi Drive richiede un token dinamico.
-`updater.py` lo gestisce automaticamente.
+`tools/updater/updater.py` lo gestisce automaticamente.
 
 Carica su Drive e copia il suo ID.
 
-### Configura updater.py:
+### Configura tools/updater/updater.py:
 ```python
-# In updater.py (root progetto):
+# In tools/updater/updater.py:
 CURRENT_VERSION  = "2.0.0"
 VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_TUO_JSON"
 ```
@@ -83,7 +80,7 @@ VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_TUO_JS
 ```
 1. Modifica il codice
 
-2. Aggiorna CURRENT_VERSION in updater.py (root)
+2. Aggiorna CURRENT_VERSION in tools/updater/updater.py
    es. "2.0.0" → "2.0.1"
 
 3. Build

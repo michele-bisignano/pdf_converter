@@ -8,13 +8,13 @@ Aggiunge 3 endpoint a /api:
 
 INTEGRAZIONE in main.py (aggiungi queste 2 righe):
 
-  from update_router import router as update_router
+  from tools.updater.update_router import router as update_router
   app.include_router(update_router)
 """
 
 import threading
 from fastapi import APIRouter
-from updater import check_for_update, do_update
+from tools.updater.updater import check_for_update, do_update
 
 router = APIRouter(prefix="/api", tags=["updater"])
 
