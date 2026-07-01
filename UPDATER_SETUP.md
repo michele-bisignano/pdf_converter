@@ -73,7 +73,7 @@ Copia l'ID (la stringa tra `/d/` e `/view`).
 ### Crea version.json:
 ```json
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "windows_url": "https://drive.google.com/uc?export=download&id=ID_EXE_WINDOWS",
   "mac_url": "https://drive.google.com/uc?export=download&id=ID_ZIP_MAC"
 }
@@ -88,7 +88,7 @@ Carica version.json su Drive e copia il suo ID.
 
 ### Configura updater.py:
 ```python
-CURRENT_VERSION  = "1.0.0"
+CURRENT_VERSION  = "2.0.0"
 VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_JSON"
 ```
 
@@ -100,7 +100,7 @@ VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_JSON"
 1. Modifica il codice
 
 2. Aggiorna CURRENT_VERSION in updater.py
-   es. "1.0.0" → "1.0.1"
+   es. "2.0.0" → "2.0.1"
 
 3. Build
    pyinstaller --onefile --name nome-app-windows main.py
@@ -110,7 +110,7 @@ VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_JSON"
    → seleziona dist/nome-app-windows.exe
    ⚠️  L'ID rimane lo stesso → windows_url nel JSON non cambia mai
 
-5. Drive: apri version.json → modifica "version": "1.0.1" → salva
+5. Drive: apri version.json → modifica "version": "2.0.1" → salva
    (sovrascrive il file, l'ID rimane lo stesso)
 ```
 

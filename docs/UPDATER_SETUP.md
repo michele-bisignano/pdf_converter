@@ -59,7 +59,7 @@ Copia l'ID (la stringa tra `/d/` e `/view`).
 ### Crea version.json:
 ```json
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "windows_url": "https://drive.google.com/uc?export=download&id=ID_EXE_WINDOWS",
   "mac_url": "https://drive.google.com/uc?export=download&id=ID_ZIP_MAC"
 }
@@ -72,7 +72,7 @@ Carica su Drive e copia il suo ID.
 ### Configura updater.py:
 ```python
 # In updater.py (root progetto):
-CURRENT_VERSION  = "1.0.0"
+CURRENT_VERSION  = "2.0.0"
 VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_TUO_JSON"
 ```
 
@@ -84,7 +84,7 @@ VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_TUO_JS
 1. Modifica il codice
 
 2. Aggiorna CURRENT_VERSION in updater.py (root)
-   es. "1.0.0" → "1.0.1"
+   es. "2.0.0" → "2.0.1"
 
 3. Build
    pyinstaller build.spec

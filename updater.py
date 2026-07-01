@@ -18,7 +18,7 @@ from typing import Optional, Tuple
 import requests  # pip install requests
 
 # ── CONFIGURA ──────────────────────────────────────────────────────────────────
-CURRENT_VERSION  = "1.0.0"
+CURRENT_VERSION  = "2.0.0"
 VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_TUO_JSON"
 # ───────────────────────────────────────────────────────────────────────────────
 
