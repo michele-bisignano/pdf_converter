@@ -16,7 +16,7 @@
 ## Architecture
 - `main.py` — entry point (web o CLI)
 - `src/backend/server.py` — FastAPI server, watchdog heartbeat, CORS
-- `src/backend/updater.py` — auto-update via Google Drive
+- `updater.py` — auto-update via Google Drive
 - `src/frontend/src/` — React app
 
 ## Rules

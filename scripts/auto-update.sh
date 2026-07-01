@@ -109,6 +109,6 @@ Prossimi passi:
   1. Carica pdf_converter.exe su Google Drive (stesso file, ID invariato)
   2. Apri version.json → sostituisci DRIVE_EXE_ID con l'ID reale del file
   3. Carica version.json su Google Drive (sovrascrivi il precedente)
-  4. Aggiorna DEFAULT_MANIFEST_URL in src/backend/updater.py con l'ID del version.json
+  4. Aggiorna VERSION_JSON_URL in updater.py (root) con l'ID del version.json
 
 EOF

@@ -138,11 +138,12 @@ Examples:
 
     # -- Auto-update check --------------------------------------------------------
     if args.check_update:
-        from src.backend.updater import check_and_apply
+        from updater import check_for_update, do_update
 
-        applied = check_and_apply(manifest_url=args.update_manifest_url)
-        if applied:
-            return  # Process will exit via sys.exit inside apply_update
+        available, latest, release = check_for_update()
+        if available:
+            do_update(release)
+            return  # Process will exit via sys.exit inside do_update
 
     # -- Normal startup -----------------------------------------------------------
     if args.cli:

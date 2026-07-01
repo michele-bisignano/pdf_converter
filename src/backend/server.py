@@ -27,10 +27,6 @@ logger = logging.getLogger("pdf_converter.api")
 
 # -- Response models ----------------------------------------------------------
 
-class HealthResponse(BaseModel):
-    status: str
-
-
 class ConvertResponse(BaseModel):
     success: bool
     file_path: str
@@ -167,7 +163,7 @@ app.add_middleware(
 
 # Include update router (if present)
 try:
-    from src.backend.update_router import router as update_router
+    from update_router import router as update_router
 
     app.include_router(update_router)
     logger.info("Update router mounted")
@@ -176,12 +172,6 @@ except ImportError:
 
 
 # -- Endpoint API -------------------------------------------------------------
-
-@app.get("/api/health", response_model=HealthResponse)
-async def health():
-    """Health check endpoint."""
-    return HealthResponse(status="ok")
-
 
 @app.post("/api/heartbeat")
 async def heartbeat():

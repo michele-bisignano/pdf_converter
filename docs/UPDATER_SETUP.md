@@ -3,8 +3,8 @@
 ## File coinvolti
 
 ```
-src/backend/updater.py         → Logica di aggiornamento
-src/backend/update_router.py   → Endpoint API (/api/update/check, /api/update/apply)
+updater.py                     → Logica di aggiornamento
+update_router.py               → Endpoint API (/api/update/check, /api/update/apply)
 src/frontend/src/components/UpdateBanner.jsx → Banner UI lato frontend
 ```
 
@@ -22,7 +22,7 @@ Già integrato: `server.py` include automaticamente `update_router.py` tramite i
 
 ```python
 try:
-    from src.backend.update_router import router as update_router
+    from update_router import router as update_router
     app.include_router(update_router)
 except ImportError:
     pass
@@ -59,24 +59,22 @@ Copia l'ID (la stringa tra `/d/` e `/view`).
 ### Crea version.json:
 ```json
 {
-  "version": "2.0.0",
-  "url": "https://drive.google.com/uc?export=download&id=ID_EXE_WINDOWS&confirm=t",
-  "checksum": "sha256 del file",
-  "checksum_type": "sha256",
-  "release_date": "2026-06-27",
-  "release_notes": "",
-  "mandatory": false
+  "version": "1.0.0",
+  "windows_url": "https://drive.google.com/uc?export=download&id=ID_EXE_WINDOWS",
+  "mac_url": "https://drive.google.com/uc?export=download&id=ID_ZIP_MAC"
 }
 ```
+⚠️ **Non aggiungere `&confirm=t`** — per file grandi Drive richiede un token dinamico.
+`updater.py` lo gestisce automaticamente.
+
 Carica su Drive e copia il suo ID.
 
 ### Configura updater.py:
 ```python
-# In src/backend/updater.py:
-DEFAULT_MANIFEST_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_JSON&confirm=t"
+# In updater.py (root progetto):
+CURRENT_VERSION  = "1.0.0"
+VERSION_JSON_URL = "https://drive.google.com/uc?export=download&id=ID_DEL_TUO_JSON"
 ```
-
-In alternativa, puoi impostare la variabile d'ambiente `PDF_CONVERTER_UPDATE_URL` o passare `--update-manifest-url` da riga di comando.
 
 ---
 
@@ -85,8 +83,8 @@ In alternativa, puoi impostare la variabile d'ambiente `PDF_CONVERTER_UPDATE_URL
 ```
 1. Modifica il codice
 
-2. Aggiorna CURRENT_VERSION in src/backend/updater.py
-   es. "2.0.0" → "2.0.1"
+2. Aggiorna CURRENT_VERSION in updater.py (root)
+   es. "1.0.0" → "1.0.1"
 
 3. Build
    pyinstaller build.spec
