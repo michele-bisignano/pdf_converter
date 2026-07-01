@@ -1,20 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 /**
- * Auto-update banner.
+ * Banner di aggiornamento automatico.
  *
- * Shows a notification when a new version is available.
- * On click "Update" downloads the new binary, restarts the app
- * and reloads the frontend once the server comes back online.
+ * Mostra un avviso quando è disponibile una nuova versione.
+ * Al click su "Aggiorna" scarica il nuovo binario, riavvia l'app
+ * e ricarica il frontend appena il server torna online.
  *
- * USAGE: import and place <UpdateBanner /> in App.jsx or the main layout.
+ * USO: importa e metti <UpdateBanner /> in App.jsx o nel layout principale.
  *
  *   import UpdateBanner from "./UpdateBanner";
  *   export default function App() {
  *     return (
  *       <>
  *         <UpdateBanner />
- *         // ... rest of the app
+ *         // ... resto dell'app
  *       </>
  *     );
  *   }
@@ -23,23 +23,23 @@ export default function UpdateBanner() {
   const [updateInfo, setUpdateInfo] = useState(null); // { version: string }
   const [status, setStatus]         = useState("idle"); // idle | downloading | restarting
 
-  const pollRef = useRef(null);
-
-  // Check for updates on mount
+  // Controlla update al mount
   useEffect(() => {
     fetch("/api/update/check")
       .then((r) => r.json())
       .then((data) => {
         if (data.available) setUpdateInfo({ version: data.version });
       })
-      .catch(() => {}); // silent if server does not respond
+      .catch(() => {}); // silenzioso se il server non risponde
+  }, []);
 
-    // Cleanup polling interval on unmount
+  // Ref per poter pulire il polling anche da un unmount
+  const pollRef = useRef(null);
+
+  useEffect(() => {
+    // cleanup se il componente smonta mentre sta pollando
     return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
+      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
 
@@ -49,22 +49,19 @@ export default function UpdateBanner() {
     try {
       await fetch("/api/update/apply", { method: "POST" });
     } catch {
-      // Server may close before responding — ok
+      // Il server potrebbe chiudersi prima di rispondere — ok
     }
 
-    // Start polling /api/health every 2s
-    // When the server is back up -> reload the page
+    // Inizia a pollare /api/health ogni 2s
+    // Quando il server torna su → ricarica la pagina
     setStatus("restarting");
     pollRef.current = setInterval(() => {
       fetch("/api/health")
         .then(() => {
-          if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-          }
+          clearInterval(pollRef.current);
           window.location.reload();
         })
-        .catch(() => {}); // still offline, retry
+        .catch(() => {}); // ancora offline, riprova
     }, 2000);
   };
 
@@ -73,14 +70,14 @@ export default function UpdateBanner() {
   return (
     <div style={styles.banner}>
       <span style={styles.text}>
-        {status === "idle" && `🔄 Version ${updateInfo.version} available`}
-        {status === "downloading" && "⏬ Downloading…"}
-        {status === "restarting" && "⚙️ Restarting… the app will update shortly"}
+        {status === "idle" && `🔄 Versione ${updateInfo.version} disponibile`}
+        {status === "downloading" && "⏬ Download in corso…"}
+        {status === "restarting" && "⚙️ Riavvio in corso… l'app si aggiornerà tra poco"}
       </span>
 
       {status === "idle" && (
         <button style={styles.button} onClick={handleUpdate}>
-          Update now
+          Aggiorna ora
         </button>
       )}
     </div>
